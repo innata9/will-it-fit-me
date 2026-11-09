@@ -69,3 +69,56 @@ test("the app embeds this exact fitting module and uses it for every photo", () 
   assert.ok(!/photoOnBody|<image href="\$\{(upperPhoto|bottomPhoto)\.url\}"/.test(html), "a photo is drawn without the fitter");
   assert.ok((html.match(/fitPhoto\(/g) || []).length >= 3, "both upper and bottom photos must go through fitPhoto");
 });
+
+// ---------- Automatic cut-out: the user only picks a photo, nothing to select ----------
+
+// A studio photo: soft grey gradient backdrop, the model's skin-toned arms (touching the
+// backdrop), a dark garment with small peach "print" dots, and dark shoes below bare ankles.
+function studioPhoto(garment = [25, 25, 28]) {
+  const W = 120, H = 200, d = new Uint8ClampedArray(W * H * 4);
+  const set = (x, y, c) => { const a = (y * W + x) * 4; d[a] = c[0]; d[a + 1] = c[1]; d[a + 2] = c[2]; d[a + 3] = 255; };
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { const v = Math.round(214 + (14 * y) / H - (6 * x) / W); set(x, y, [v, v - 2, v - 5]); }
+  const skin = [222, 170, 140];
+  for (let y = 30; y < 120; y++) { for (let x = 22; x < 32; x++) set(x, y, skin); for (let x = 88; x < 98; x++) set(x, y, skin); } // arms
+  for (let y = 25; y < 170; y++) for (let x = 35; x < 85; x++) set(x, y, garment); // garment
+  for (let y = 170; y < 185; y++) { for (let x = 45; x < 52; x++) set(x, y, skin); for (let x = 68; x < 75; x++) set(x, y, skin); } // ankles
+  for (let y = 185; y < 190; y++) { for (let x = 42; x < 55; x++) set(x, y, [20, 20, 20]); for (let x = 65; x < 78; x++) set(x, y, [20, 20, 20]); } // shoes
+  for (const [cx, cy] of [[50, 60], [70, 100], [60, 140]]) for (let y = cy - 2; y <= cy + 2; y++) for (let x = cx - 2; x <= cx + 2; x++) set(x, y, [240, 190, 150]); // print
+  return { d, W, H, alpha: (x, y) => d[(y * W + x) * 4 + 3] };
+}
+
+test("background, the model's skin, shoes and leftovers are removed automatically", () => {
+  const p = studioPhoto();
+  assert.ok(gf.gfExtract(p.d, p.W, p.H));
+  assert.strictEqual(p.alpha(5, 5), 0, "backdrop");
+  assert.strictEqual(p.alpha(26, 60), 0, "arm skin");
+  assert.strictEqual(p.alpha(48, 178), 0, "ankle skin");
+  assert.strictEqual(p.alpha(48, 187), 0, "shoe");
+  assert.strictEqual(p.alpha(60, 30), 255, "garment kept");
+  assert.strictEqual(p.alpha(50, 60), 255, "skin-coloured print inside the garment kept");
+  const fit = gf.gfMeasure(p.d, p.W, p.H);
+  assert.deepStrictEqual(fit.box, { x: 35, y: 25, w: 50, h: 145 }, "trimmed exactly to the garment");
+});
+
+test("a nude / peach garment is not mistaken for skin", () => {
+  const p = studioPhoto([226, 176, 146]);
+  assert.ok(gf.gfExtract(p.d, p.W, p.H));
+  assert.strictEqual(p.alpha(60, 80), 255, "skin-toned garment kept");
+});
+
+test("necklines and halters keep their own shape above the bust", () => {
+  const W = 40, H = 160, d = new Uint8ClampedArray(W * H * 4);
+  for (let y = 0; y < H; y++) { const half = y < 30 ? 2 : 18; for (let x = 20 - half; x < 20 + half; x++) d[(y * W + x) * 4 + 3] = 255; }
+  const B = makeBody({ heightCm: 165, bustCm: 90, waistCm: 72, hipsCm: 100 });
+  const plan = gf.gfPlan(gf.gfMeasure(d, W, H), "upper", { ...B, modelH: 179, lengthCm: 130 });
+  const neck = plan.bands.find((b) => b.y + b.h / 2 < 80), skirt = plan.bands.find((b) => b.y > 200);
+  assert.ok(neck.half < 10, `halter strap should stay narrow, got ${neck.half}`);
+  assert.ok(skirt.half >= gf.gfLerp(gf.GF_TORSO, skirt.y) * B.widthAt(skirt.y, B.K), "below the bust it still covers the body");
+});
+
+test("the app has no manual selection step: picking a photo puts it straight on the avatar", () => {
+  assert.ok(!/garCanvas|Mark the garment|garSave|Drag a box/.test(html), "manual 'mark the garment' UI is back");
+  const handler = html.slice(html.indexOf('$("#fileGarment").addEventListener'), html.indexOf("function afterRender"));
+  assert.ok(/gfExtract\(/.test(handler) && /measureCanvas\(/.test(handler) && /localStorage\.setItem\("wifm-g-"/.test(handler), "the photo handler must cut out, measure and save automatically");
+  assert.ok(!/go\("garment"/.test(html), "no extra screen between choosing the photo and the avatar");
+});

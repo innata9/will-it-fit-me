@@ -486,16 +486,21 @@ function warpBody(svg, K) {
  * 1. The cut-out is trimmed to the garment itself (transparent margins removed),
  *    and its outline is measured row by row (left/right edge of the fabric).
  * 2. On the avatar, every row is re-drawn at the width the garment would have on
- *    THIS body at that height: never narrower than the body + ease, and keeping the
- *    garment's own shape (flare, wide legs, sleeves) relative to its anchor
- *    (shoulders for tops/dresses/coats, waistband for skirts/trousers).
+ *    THIS body at that height: the photographed shape at true scale, widened where
+ *    this body is wider than average, and never narrower than the body where it
+ *    must cover it (bust down for tops/dresses/coats, everywhere for bottoms).
+ *    Necklines, halters and straps above the bust keep their own shape.
  * 3. Length: the chart's "total length" in cm when known (cm -> avatar units by
  *    the user's height); otherwise the photo's proportions re-scaled from the
  *    model's height to the user's.
+ * 4. Getting the garment out of a shop photo is AUTOMATIC (gfExtract): the user only
+ *    picks the photo. No box to draw, no manual selection step - ever.
  * Avatar frame: x centre 100; head top y=14, soles y=397 -> 383 units = user's height.
  */
 const GF_ROWS = 64;
 const GF_UNITS = 383;
+const GF_STYLE = 0.9;   // the avatar is drawn a little slimmer than life
+const GF_BUST_Y = 95;  // from here down a top/dress/coat must cover the body
 
 // Half-width of the neutral avatar (all factors 1) at height y, local units.
 const GF_TORSO = [[70, 14], [76, 30], [100, 31], [128, 24], [150, 27], [172, 30], [182, 33], [234, 32], [300, 22], [352, 20], [390, 17]];
@@ -530,6 +535,77 @@ function gfMeasure(data, W, H, alphaMin = 40) {
   return { box: { x: x0, y: y0, w: bw, h: bh }, rows };
 }
 
+// Automatic cut-out of the garment from a shop photo (RGBA buffer, edited in place).
+// 1) studio background: flood-filled from the photo's edges (follows soft gradients),
+// 2) the model's skin (face, neck, arms, legs): large skin-toned areas are removed,
+// 3) leftovers (hair, shoes, bag, stray bits): only the biggest connected piece is kept.
+// Returns { kept: fraction of pixels kept } or null if nothing usable was found.
+function gfExtract(d, W, H) {
+  const N = W * H, A = (p) => p * 4;
+  const dist2 = (p, q) => { const a = A(p), b = A(q); const r = d[a] - d[b], g = d[a + 1] - d[b + 1], bl = d[a + 2] - d[b + 2]; return r * r + g * g + bl * bl; };
+  // 1) Background reference: median of the border pixels.
+  const border = [];
+  for (let x = 0; x < W; x++) border.push(x, (H - 1) * W + x);
+  for (let y = 1; y < H - 1; y++) border.push(y * W, y * W + W - 1);
+  const med = (k) => { const v = border.map((p) => d[A(p) + k]).sort((a, b) => a - b); return v[v.length >> 1]; };
+  const ref = [med(0), med(1), med(2)];
+  const toRef = (p) => { const a = A(p); const r = d[a] - ref[0], g = d[a + 1] - ref[1], b = d[a + 2] - ref[2]; return r * r + g * g + b * b; };
+  const bg = new Uint8Array(N), q = [];
+  for (const p of border) if (!bg[p] && toRef(p) < 70 * 70) { bg[p] = 1; q.push(p); }
+  while (q.length) {
+    const p = q.pop(), x = p % W;
+    for (const k of [x > 0 ? p - 1 : -1, x < W - 1 ? p + 1 : -1, p - W, p + W]) {
+      if (k < 0 || k >= N || bg[k]) continue;
+      if (dist2(p, k) < 14 * 14 && toRef(k) < 75 * 75) { bg[k] = 1; q.push(k); }
+    }
+  }
+  // 2) Skin: YCbCr skin range, removed only as large connected areas (a print's small peach flowers stay).
+  const skin = new Uint8Array(N);
+  for (let p = 0; p < N; p++) {
+    if (bg[p]) continue;
+    const a = A(p), r = d[a], g = d[a + 1], b = d[a + 2];
+    const y = 0.299 * r + 0.587 * g + 0.114 * b, cb = 128 - 0.1687 * r - 0.3313 * g + 0.5 * b, cr = 128 + 0.5 * r - 0.4187 * g - 0.0813 * b;
+    if (y > 50 && cr > 135 && cr < 180 && cb > 80 && cb < 130 && r > g && r > b) skin[p] = 1;
+  }
+  const bgOnly = bg.slice();
+  let fg = 0, skinOut = 0;
+  for (let p = 0; p < N; p++) if (!bg[p]) fg++;
+  const comp = new Int32Array(N).fill(-1), minSkin = Math.max(30, N * 0.004), minEdge = Math.max(12, N * 0.0006);
+  for (let s = 0; s < N; s++) {
+    if (!skin[s] || comp[s] >= 0) continue;
+    const list = [s]; comp[s] = s;
+    let edge = false; // skin that borders the backdrop is the model's body, not the print
+    for (let i = 0; i < list.length; i++) {
+      const p = list[i], x = p % W;
+      for (const k of [x > 0 ? p - 1 : -1, x < W - 1 ? p + 1 : -1, p - W, p + W]) {
+        if (k < 0 || k >= N) continue;
+        if (bgOnly[k]) edge = true;
+        else if (skin[k] && comp[k] < 0) { comp[k] = s; list.push(k); }
+      }
+    }
+    if (list.length >= minSkin || (edge && list.length >= minEdge)) { for (const p of list) bg[p] = 1; skinOut += list.length; }
+  }
+  // A nude / beige / peach garment would look like skin: then keep it and skip this step.
+  if (skinOut > fg * 0.65) bg.set(bgOnly);
+  // 3) Keep the biggest connected piece (the garment).
+  const lab = new Int32Array(N).fill(-1);
+  let best = null;
+  for (let s = 0; s < N; s++) {
+    if (bg[s] || lab[s] >= 0) continue;
+    const list = [s]; lab[s] = s;
+    for (let i = 0; i < list.length; i++) {
+      const p = list[i], x = p % W;
+      for (const k of [x > 0 ? p - 1 : -1, x < W - 1 ? p + 1 : -1, p - W, p + W]) if (k >= 0 && k < N && !bg[k] && lab[k] < 0) { lab[k] = s; list.push(k); }
+    }
+    if (!best || list.length > best.length) best = list;
+  }
+  if (!best || best.length < N * 0.02) return null;
+  const keep = new Uint8Array(N);
+  for (const p of best) keep[p] = 1;
+  for (let p = 0; p < N; p++) d[A(p) + 3] = keep[p] ? 255 : 0;
+  return { kept: best.length / N };
+}
+
 // Pull "total length" (cm) for a size out of a pasted size-chart text.
 function gfChartLengthCm(chart, size) {
   if (!chart) return null;
@@ -555,11 +631,9 @@ function gfPlan(fit, kind, opts) {
   const y0 = kind === "upper" ? 68 : opts.rise === "high" ? 134 : opts.rise === "low" ? 160 : 148;
   const torso = (y) => gfLerp(GF_TORSO, y) * widthAt(y, K);
   // Anchor: widest row near the top (shoulders / waistband).
-  const head = rows.slice(0, Math.max(2, Math.round(n * (kind === "upper" ? 0.1 : 0.06)))).filter(Boolean);
+  const head = rows.slice(0, Math.max(2, Math.round(n * (kind === "upper" ? 0.2 : 0.06)))).filter(Boolean);
   if (!head.length) return null;
   const srcAnchor = Math.max(...head.map(([l, r]) => (r - l) / 2)); // fraction of box width
-  const yAnchor = kind === "upper" ? 78 : y0 + 2;
-  const bodyAnchor = torso(yAnchor);
   // Length in avatar units.
   let gh;
   if (opts.lengthCm) gh = (opts.lengthCm * GF_UNITS) / userH;
@@ -571,16 +645,22 @@ function gfPlan(fit, kind, opts) {
     gh = (lengthCm * GF_UNITS) / userH;
   }
   gh = Math.max(20, Math.min(394 - y0, gh));
+  // Width: the garment keeps its photographed shape at true scale (photo px -> avatar
+  // units, the same scale as the length), widened by how much wider this body is than
+  // average at that height - and never narrower than the body itself where it must
+  // cover it (from the bust down for tops/dresses/coats; everywhere for bottoms).
+  // Above the bust (necklines, halters, straps) the garment's own shape is kept.
+  const px = gh / fit.box.h; // avatar units per photo pixel
   const bh = gh / n, bands = [];
   for (let i = 0; i < n; i++) {
     const row = rows[i];
     if (!row) continue;
     const y = y0 + (i + 0.5) * bh;
-    const srcHalf = (row[1] - row[0]) / 2;
+    const own = ((row[1] - row[0]) / 2) * fit.box.w * px * GF_STYLE * widthAt(y, K);
     let body = torso(y);
     if (opts.loose && y > 100 && y < 182) body = Math.max(body, torso(100) + ((torso(182) - torso(100)) * (y - 100)) / 82);
-    const ease = kind === "upper" ? 2 : 1.2;
-    const half = Math.max((srcHalf / srcAnchor) * bodyAnchor, body + ease);
+    const covers = kind === "bottom" || y >= GF_BUST_Y;
+    const half = covers ? Math.max(own, body + (kind === "upper" ? 2 : 1.2)) : own;
     bands.push({ y: y0 + i * bh, h: bh, l: row[0], r: row[1], half });
   }
   return { y0, gh, bands };
@@ -598,7 +678,6 @@ function gfSVG(url, plan, id) {
   });
   return out;
 }
-
 
 // Everything the fitter needs to know about a piece: its photo outline, the chart
 // length for the recommended size, the model's height and how high it sits.
@@ -893,6 +972,7 @@ V.check = () => {
   <div class="stage">${avatarSVG({ pieces: [{ slot: catToSlot(item.category), name: item.name, colorHex: item.colorHex, length: item.lengthNote || "", modelH: item.modelHeightCm || null, ref: c.id }] }, 170)}
     <p class="tiny" style="text-align:center">${esc(bodyNote(item.modelHeightCm))}</p>
     <label class="link" for="fileGarment" role="button" tabindex="0" style="cursor:pointer">${icon("image", 18)}${garmentFor(c.id) ? "Change the shop photo" : "Try it on with the shop photo"}</label>
+    ${S.ui.garBusy ? `<p class="tiny" role="status">Removing the background and putting it on your avatar…</p>` : ""}
     ${S.ui.garErr ? `<div class="notice bad" role="alert">${esc(S.ui.garErr)}</div>` : ""}
     ${garmentFor(c.id) ? `<button class="link danger" data-a="garRemove" data-id="${c.id}">Use the drawing instead</button>` : ""}</div>
   <p class="tiny">Save the product photo from the shop (a screenshot is fine), then choose it here. The photo stays on your phone.</p>
@@ -1138,119 +1218,41 @@ function measureSaved(id, g) {
   im.src = g.url;
 }
 
-function garIsBottom(id) {
-  const c = S.data.checks.find((x) => x.id === id);
-  return !!(c && c.result && catToSlot(c.result.item.category) === "bottom");
-}
-
-V.garment = () => {
-  const G = S.ui.gar;
-  return `${topbar("Shop photo")}
-  <h1>Mark the garment</h1>
-  ${garIsBottom(G.target)
-    ? `<p class="body2">Drag a box over the garment: from hip to hip, and from the waistband down to the hem. Leave out the top and the shoes.</p>`
-    : `<p class="body2">Drag a box over the garment: from shoulder to shoulder, and from the collar down to the hem. Leave out the head and the shoes.</p>`}
-  <canvas id="garCanvas" role="img" aria-label="The shop photo. Drag to mark the garment." style="width:100%;height:auto;border-radius:16px;touch-action:none;cursor:crosshair"></canvas>
-  <div class="row" style="gap:8px;flex-wrap:wrap"><button class="chip" aria-pressed="${G.bg}" data-a="garBg">Remove plain background</button><button class="chip" data-a="garAll">Use the whole photo</button></div>
-  ${G.rect ? `<div class="stage"><p class="tiny">Preview</p><canvas id="garPreview" style="max-width:60%;height:auto;background:repeating-conic-gradient(var(--line) 0% 25%, var(--surface) 0% 50%) 50% / 16px 16px;border-radius:10px"></canvas></div>` : ""}
-  <button class="btn" data-a="garSave" ${G.rect ? "" : "disabled"}>${G.rect ? "Put it on my avatar" : "Mark the garment first"}</button>
-  <button class="btn secondary" data-a="back">Cancel</button>
-  <p class="tiny" style="text-align:center">Works best on product photos with a plain background. The photo stays on your phone.</p>`;
-};
-
-function drawGar() {
-  const cv = $("#garCanvas"), base = S.mem.garBase, G = S.ui.gar;
-  if (!cv || !base) return;
-  cv.width = base.width; cv.height = base.height;
-  const ctx = cv.getContext("2d");
-  ctx.drawImage(base, 0, 0);
-  if (G.rect) {
-    const r = G.rect;
-    ctx.fillStyle = "rgba(0,0,0,0.45)";
-    ctx.fillRect(0, 0, cv.width, r.y); ctx.fillRect(0, r.y + r.h, cv.width, cv.height - r.y - r.h);
-    ctx.fillRect(0, r.y, r.x, r.h); ctx.fillRect(r.x + r.w, r.y, cv.width - r.x - r.w, r.h);
-    ctx.lineWidth = Math.max(2, cv.width / 200); ctx.strokeStyle = "#FFFFFF"; ctx.strokeRect(r.x, r.y, r.w, r.h);
-  }
-}
-
-function makeCutout() {
-  const base = S.mem.garBase, G = S.ui.gar, r = G.rect;
-  const scale = Math.min(1, 360 / r.w);
-  const out = document.createElement("canvas");
-  out.width = Math.max(1, Math.round(r.w * scale)); out.height = Math.max(1, Math.round(r.h * scale));
-  const ctx = out.getContext("2d");
-  ctx.drawImage(base, r.x, r.y, r.w, r.h, 0, 0, out.width, out.height);
-  if (G.bg) {
-    const W = out.width, H = out.height, img = ctx.getImageData(0, 0, W, H), d = img.data;
-    // Reference = average of the box's border pixels (the studio backdrop).
-    let R = 0, Gg = 0, B = 0, n = 0;
-    const border = [];
-    for (let x = 0; x < W; x++) border.push(x, (H - 1) * W + x);
-    for (let y = 0; y < H; y++) border.push(y * W, y * W + W - 1);
-    for (const p of border) { R += d[p * 4]; Gg += d[p * 4 + 1]; B += d[p * 4 + 2]; n++; }
-    R /= n; Gg /= n; B /= n;
-    const tol = 42 * 42, seen = new Uint8Array(W * H), q = [];
-    const near = (p) => { const dr = d[p * 4] - R, dg = d[p * 4 + 1] - Gg, db = d[p * 4 + 2] - B; return dr * dr + dg * dg + db * db < tol; };
-    for (const p of border) if (!seen[p] && near(p)) { seen[p] = 1; q.push(p); }
-    while (q.length) {
-      const p = q.pop(), x = p % W, y = (p - x) / W;
-      d[p * 4 + 3] = 0;
-      const nb = [x > 0 ? p - 1 : -1, x < W - 1 ? p + 1 : -1, y > 0 ? p - W : -1, y < H - 1 ? p + W : -1];
-      for (const k of nb) if (k >= 0 && !seen[k] && near(k)) { seen[k] = 1; q.push(k); }
-    }
-    ctx.putImageData(img, 0, 0);
-  }
-  return measureCanvas(out) || { url: out.toDataURL("image/png"), w: out.width, h: out.height, fit: { box: { w: out.width, h: out.height }, rows: Array.from({ length: GF_ROWS }, () => [0, 1]) } };
-}
-
-function wireGarCanvas() {
-  const cv = $("#garCanvas");
-  if (!cv) return;
-  let start = null;
-  const pt = (e) => { const r = cv.getBoundingClientRect(); return { x: ((e.clientX - r.left) / r.width) * cv.width, y: ((e.clientY - r.top) / r.height) * cv.height }; };
-  cv.onpointerdown = (e) => { start = pt(e); try { cv.setPointerCapture(e.pointerId); } catch (x) { /* ok */ } };
-  cv.onpointermove = (e) => {
-    if (!start) return;
-    const p = pt(e);
-    S.ui.gar.rect = { x: Math.max(0, Math.min(start.x, p.x)), y: Math.max(0, Math.min(start.y, p.y)), w: Math.abs(p.x - start.x), h: Math.abs(p.y - start.y) };
-    drawGar();
-  };
-  cv.onpointerup = () => {
-    start = null;
-    const r = S.ui.gar.rect;
-    if (r && (r.w < 12 || r.h < 12)) S.ui.gar.rect = null;
-    render();
-  };
-}
-
+// Shop photo -> garment on the avatar, fully automatic: background, the model's skin and
+// leftovers are removed by gfExtract, then the outline is measured and fitted to the body.
+// There is deliberately NO manual "mark the garment" step (see garment-fit.js, rule 4).
 $("#fileGarment").addEventListener("change", (e) => {
   const f = e.target.files && e.target.files[0];
   e.target.value = "";
   if (!f || S.view !== "check") return;
   const target = S.params.id, url = URL.createObjectURL(f), img = new Image();
+  S.ui.garErr = null; S.ui.garBusy = true; render();
   img.onload = () => {
-    const scale = Math.min(1, 1000 / Math.max(img.naturalWidth, img.naturalHeight));
+    URL.revokeObjectURL(url);
+    const scale = Math.min(1, 800 / Math.max(img.naturalWidth, img.naturalHeight));
     const c = document.createElement("canvas");
     c.width = Math.max(1, Math.round(img.naturalWidth * scale)); c.height = Math.max(1, Math.round(img.naturalHeight * scale));
-    c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
-    URL.revokeObjectURL(url);
-    S.mem.garBase = c; S.ui.gar = { target, rect: null, bg: true }; S.ui.garErr = null;
-    go("garment", { id: target });
+    const ctx = c.getContext("2d");
+    ctx.drawImage(img, 0, 0, c.width, c.height);
+    setTimeout(() => {
+      const data = ctx.getImageData(0, 0, c.width, c.height);
+      const ok = gfExtract(data.data, c.width, c.height);
+      if (ok) ctx.putImageData(data, 0, 0);
+      else S.ui.garErr = "I couldn't separate the garment from the background, so the whole photo is used. A product photo on a plain background works best.";
+      const g = measureCanvas(c);
+      S.ui.garBusy = false;
+      if (!g) { S.ui.garErr = "Nothing usable was found in this photo. Try another product photo."; render(); return; }
+      S.mem.garments = S.mem.garments || {};
+      S.mem.garments[target] = g;
+      try { localStorage.setItem("wifm-g-" + target, JSON.stringify(g)); } catch (x) { /* kept for this visit only */ }
+      render();
+    }, 30);
   };
-  img.onerror = () => { URL.revokeObjectURL(url); S.ui.garErr = "This photo couldn't be opened. Take a screenshot of the product photo and choose the screenshot instead."; render(); };
+  img.onerror = () => { URL.revokeObjectURL(url); S.ui.garBusy = false; S.ui.garErr = "This photo couldn't be opened. Take a screenshot of the product photo and choose the screenshot instead."; render(); };
   img.src = url;
 });
 
 function afterRender(view) {
-  if (view === "garment") {
-    drawGar(); wireGarCanvas();
-    const pv = $("#garPreview");
-    if (pv && S.ui.gar.rect) {
-      const g = makeCutout(), im = new Image();
-      im.onload = () => { pv.width = g.w; pv.height = g.h; pv.getContext("2d").drawImage(im, 0, 0); };
-      im.src = g.url; S.ui.gar.cut = g;
-    }
-  }
   if (view === "selfiePick") drawPickCanvas(Object.values(S.ui.sp.marks));
   if (view === "colorPick") drawPickCanvas(S.ui.cpMark ? [S.ui.cpMark] : []);
 }
@@ -1369,18 +1371,6 @@ const A = {
     A.startCheck();
   },
   inboxDel: (d) => inboxRemove(d.id),
-  garBg: () => { S.ui.gar.bg = !S.ui.gar.bg; render(); },
-  garAll: () => { const b = S.mem.garBase; if (!b) return; S.ui.gar.rect = { x: 0, y: 0, w: b.width, h: b.height }; S.ui.gar.cut = null; render(); },
-  garSave: () => {
-    const G = S.ui.gar;
-    if (!G.rect) return;
-    const g = G.cut || makeCutout();
-    S.mem.garments = S.mem.garments || {};
-    S.mem.garments[G.target] = g;
-    try { localStorage.setItem("wifm-g-" + G.target, JSON.stringify(g)); } catch (e) { /* kept for this visit only */ }
-    S.mem.garBase = null;
-    back();
-  },
   garRemove: (d) => {
     S.mem.garments = S.mem.garments || {};
     S.mem.garments[d.id] = null;

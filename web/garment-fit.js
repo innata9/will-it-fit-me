@@ -3,16 +3,21 @@
  * 1. The cut-out is trimmed to the garment itself (transparent margins removed),
  *    and its outline is measured row by row (left/right edge of the fabric).
  * 2. On the avatar, every row is re-drawn at the width the garment would have on
- *    THIS body at that height: never narrower than the body + ease, and keeping the
- *    garment's own shape (flare, wide legs, sleeves) relative to its anchor
- *    (shoulders for tops/dresses/coats, waistband for skirts/trousers).
+ *    THIS body at that height: the photographed shape at true scale, widened where
+ *    this body is wider than average, and never narrower than the body where it
+ *    must cover it (bust down for tops/dresses/coats, everywhere for bottoms).
+ *    Necklines, halters and straps above the bust keep their own shape.
  * 3. Length: the chart's "total length" in cm when known (cm -> avatar units by
  *    the user's height); otherwise the photo's proportions re-scaled from the
  *    model's height to the user's.
+ * 4. Getting the garment out of a shop photo is AUTOMATIC (gfExtract): the user only
+ *    picks the photo. No box to draw, no manual selection step - ever.
  * Avatar frame: x centre 100; head top y=14, soles y=397 -> 383 units = user's height.
  */
 const GF_ROWS = 64;
 const GF_UNITS = 383;
+const GF_STYLE = 0.9;   // the avatar is drawn a little slimmer than life
+const GF_BUST_Y = 95;  // from here down a top/dress/coat must cover the body
 
 // Half-width of the neutral avatar (all factors 1) at height y, local units.
 const GF_TORSO = [[70, 14], [76, 30], [100, 31], [128, 24], [150, 27], [172, 30], [182, 33], [234, 32], [300, 22], [352, 20], [390, 17]];
@@ -47,6 +52,77 @@ function gfMeasure(data, W, H, alphaMin = 40) {
   return { box: { x: x0, y: y0, w: bw, h: bh }, rows };
 }
 
+// Automatic cut-out of the garment from a shop photo (RGBA buffer, edited in place).
+// 1) studio background: flood-filled from the photo's edges (follows soft gradients),
+// 2) the model's skin (face, neck, arms, legs): large skin-toned areas are removed,
+// 3) leftovers (hair, shoes, bag, stray bits): only the biggest connected piece is kept.
+// Returns { kept: fraction of pixels kept } or null if nothing usable was found.
+function gfExtract(d, W, H) {
+  const N = W * H, A = (p) => p * 4;
+  const dist2 = (p, q) => { const a = A(p), b = A(q); const r = d[a] - d[b], g = d[a + 1] - d[b + 1], bl = d[a + 2] - d[b + 2]; return r * r + g * g + bl * bl; };
+  // 1) Background reference: median of the border pixels.
+  const border = [];
+  for (let x = 0; x < W; x++) border.push(x, (H - 1) * W + x);
+  for (let y = 1; y < H - 1; y++) border.push(y * W, y * W + W - 1);
+  const med = (k) => { const v = border.map((p) => d[A(p) + k]).sort((a, b) => a - b); return v[v.length >> 1]; };
+  const ref = [med(0), med(1), med(2)];
+  const toRef = (p) => { const a = A(p); const r = d[a] - ref[0], g = d[a + 1] - ref[1], b = d[a + 2] - ref[2]; return r * r + g * g + b * b; };
+  const bg = new Uint8Array(N), q = [];
+  for (const p of border) if (!bg[p] && toRef(p) < 70 * 70) { bg[p] = 1; q.push(p); }
+  while (q.length) {
+    const p = q.pop(), x = p % W;
+    for (const k of [x > 0 ? p - 1 : -1, x < W - 1 ? p + 1 : -1, p - W, p + W]) {
+      if (k < 0 || k >= N || bg[k]) continue;
+      if (dist2(p, k) < 14 * 14 && toRef(k) < 75 * 75) { bg[k] = 1; q.push(k); }
+    }
+  }
+  // 2) Skin: YCbCr skin range, removed only as large connected areas (a print's small peach flowers stay).
+  const skin = new Uint8Array(N);
+  for (let p = 0; p < N; p++) {
+    if (bg[p]) continue;
+    const a = A(p), r = d[a], g = d[a + 1], b = d[a + 2];
+    const y = 0.299 * r + 0.587 * g + 0.114 * b, cb = 128 - 0.1687 * r - 0.3313 * g + 0.5 * b, cr = 128 + 0.5 * r - 0.4187 * g - 0.0813 * b;
+    if (y > 50 && cr > 135 && cr < 180 && cb > 80 && cb < 130 && r > g && r > b) skin[p] = 1;
+  }
+  const bgOnly = bg.slice();
+  let fg = 0, skinOut = 0;
+  for (let p = 0; p < N; p++) if (!bg[p]) fg++;
+  const comp = new Int32Array(N).fill(-1), minSkin = Math.max(30, N * 0.004), minEdge = Math.max(12, N * 0.0006);
+  for (let s = 0; s < N; s++) {
+    if (!skin[s] || comp[s] >= 0) continue;
+    const list = [s]; comp[s] = s;
+    let edge = false; // skin that borders the backdrop is the model's body, not the print
+    for (let i = 0; i < list.length; i++) {
+      const p = list[i], x = p % W;
+      for (const k of [x > 0 ? p - 1 : -1, x < W - 1 ? p + 1 : -1, p - W, p + W]) {
+        if (k < 0 || k >= N) continue;
+        if (bgOnly[k]) edge = true;
+        else if (skin[k] && comp[k] < 0) { comp[k] = s; list.push(k); }
+      }
+    }
+    if (list.length >= minSkin || (edge && list.length >= minEdge)) { for (const p of list) bg[p] = 1; skinOut += list.length; }
+  }
+  // A nude / beige / peach garment would look like skin: then keep it and skip this step.
+  if (skinOut > fg * 0.65) bg.set(bgOnly);
+  // 3) Keep the biggest connected piece (the garment).
+  const lab = new Int32Array(N).fill(-1);
+  let best = null;
+  for (let s = 0; s < N; s++) {
+    if (bg[s] || lab[s] >= 0) continue;
+    const list = [s]; lab[s] = s;
+    for (let i = 0; i < list.length; i++) {
+      const p = list[i], x = p % W;
+      for (const k of [x > 0 ? p - 1 : -1, x < W - 1 ? p + 1 : -1, p - W, p + W]) if (k >= 0 && k < N && !bg[k] && lab[k] < 0) { lab[k] = s; list.push(k); }
+    }
+    if (!best || list.length > best.length) best = list;
+  }
+  if (!best || best.length < N * 0.02) return null;
+  const keep = new Uint8Array(N);
+  for (const p of best) keep[p] = 1;
+  for (let p = 0; p < N; p++) d[A(p) + 3] = keep[p] ? 255 : 0;
+  return { kept: best.length / N };
+}
+
 // Pull "total length" (cm) for a size out of a pasted size-chart text.
 function gfChartLengthCm(chart, size) {
   if (!chart) return null;
@@ -72,11 +148,9 @@ function gfPlan(fit, kind, opts) {
   const y0 = kind === "upper" ? 68 : opts.rise === "high" ? 134 : opts.rise === "low" ? 160 : 148;
   const torso = (y) => gfLerp(GF_TORSO, y) * widthAt(y, K);
   // Anchor: widest row near the top (shoulders / waistband).
-  const head = rows.slice(0, Math.max(2, Math.round(n * (kind === "upper" ? 0.1 : 0.06)))).filter(Boolean);
+  const head = rows.slice(0, Math.max(2, Math.round(n * (kind === "upper" ? 0.2 : 0.06)))).filter(Boolean);
   if (!head.length) return null;
   const srcAnchor = Math.max(...head.map(([l, r]) => (r - l) / 2)); // fraction of box width
-  const yAnchor = kind === "upper" ? 78 : y0 + 2;
-  const bodyAnchor = torso(yAnchor);
   // Length in avatar units.
   let gh;
   if (opts.lengthCm) gh = (opts.lengthCm * GF_UNITS) / userH;
@@ -88,16 +162,22 @@ function gfPlan(fit, kind, opts) {
     gh = (lengthCm * GF_UNITS) / userH;
   }
   gh = Math.max(20, Math.min(394 - y0, gh));
+  // Width: the garment keeps its photographed shape at true scale (photo px -> avatar
+  // units, the same scale as the length), widened by how much wider this body is than
+  // average at that height - and never narrower than the body itself where it must
+  // cover it (from the bust down for tops/dresses/coats; everywhere for bottoms).
+  // Above the bust (necklines, halters, straps) the garment's own shape is kept.
+  const px = gh / fit.box.h; // avatar units per photo pixel
   const bh = gh / n, bands = [];
   for (let i = 0; i < n; i++) {
     const row = rows[i];
     if (!row) continue;
     const y = y0 + (i + 0.5) * bh;
-    const srcHalf = (row[1] - row[0]) / 2;
+    const own = ((row[1] - row[0]) / 2) * fit.box.w * px * GF_STYLE * widthAt(y, K);
     let body = torso(y);
     if (opts.loose && y > 100 && y < 182) body = Math.max(body, torso(100) + ((torso(182) - torso(100)) * (y - 100)) / 82);
-    const ease = kind === "upper" ? 2 : 1.2;
-    const half = Math.max((srcHalf / srcAnchor) * bodyAnchor, body + ease);
+    const covers = kind === "bottom" || y >= GF_BUST_Y;
+    const half = covers ? Math.max(own, body + (kind === "upper" ? 2 : 1.2)) : own;
     bands.push({ y: y0 + i * bh, h: bh, l: row[0], r: row[1], half });
   }
   return { y0, gh, bands };
@@ -116,4 +196,4 @@ function gfSVG(url, plan, id) {
   return out;
 }
 
-if (typeof module !== "undefined") module.exports = { gfMeasure, gfChartLengthCm, gfPlan, gfSVG, gfLerp, GF_TORSO, GF_ROWS, GF_UNITS };
+if (typeof module !== "undefined") module.exports = { gfExtract, gfMeasure, gfChartLengthCm, gfPlan, gfSVG, gfLerp, GF_TORSO, GF_ROWS, GF_UNITS };
