@@ -1,0 +1,1573 @@
+<title>Will It Fit Me</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Unbounded:wght@500;600&display=swap">
+<style>
+/* Layout: one phone-width column, cards on a cool grey ground, bottom tab bar. Mirrors the approved prototype. */
+:root {
+  --bg: #F3F4F6; --surface: #FFFFFF; --soft: #F6F5F8; --stage: #ECE9E4;
+  --ink: #18171C; --ink2: #34323C; --muted: #5B5966; --line: #E2E1E6; --field: #CFCDD6;
+  --accent: #5B2A86; --on-accent: #FFFFFF; --accent-soft: #EEE7F5; --accent-ink: #3F1C5E;
+  --good: #1E7A46; --good-bg: #E6F4EC; --warn: #8A5300; --warn-bg: #FDF0DC;
+  --risky: #A3430B; --risky-bg: #FDE9DD; --bad: #A6261C; --bad-bg: #FBE7E5;
+  --font-display: "Unbounded", "Manrope", system-ui, sans-serif;
+  --font-body: "Manrope", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #131217; --surface: #1D1C23; --soft: #26242D; --stage: #24222A;
+  --ink: #F1EFF5; --ink2: #D4D1DC; --muted: #A9A6B4; --line: #2F2D37; --field: #4A4755;
+  --accent: #B993E6; --on-accent: #1A1022; --accent-soft: #2E2340; --accent-ink: #DCC9F2;
+  --good: #72D39E; --good-bg: #17301F; --warn: #F2B45C; --warn-bg: #3A2A12;
+  --risky: #F49A6A; --risky-bg: #3A2216; --bad: #F28B82; --bad-bg: #3A1A18; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #131217; --surface: #1D1C23; --soft: #26242D; --stage: #24222A;
+  --ink: #F1EFF5; --ink2: #D4D1DC; --muted: #A9A6B4; --line: #2F2D37; --field: #4A4755;
+  --accent: #B993E6; --on-accent: #1A1022; --accent-soft: #2E2340; --accent-ink: #DCC9F2;
+  --good: #72D39E; --good-bg: #17301F; --warn: #F2B45C; --warn-bg: #3A2A12;
+  --risky: #F49A6A; --risky-bg: #3A2216; --bad: #F28B82; --bad-bg: #3A1A18; color-scheme: dark }
+
+html, body { background: var(--bg); color: var(--ink); }
+body { font-family: var(--font-body); font-size: 15px; line-height: 1.45; -webkit-font-smoothing: antialiased; }
+* { box-sizing: border-box; }
+.app { max-width: 480px; margin: 0 auto; padding-block: 20px 112px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: flex; flex-direction: column; gap: 16px; }
+.app.no-tabs { padding-bottom: 32px; }
+h1, h2, h3 { margin: 0; text-wrap: balance; }
+h1 { font-family: var(--font-display); font-weight: 600; font-size: 24px; line-height: 1.22; letter-spacing: -0.01em; }
+h1.xl { font-size: 28px; }
+h2 { font-size: 16px; font-weight: 800; }
+p { margin: 0; }
+.eyebrow { font-size: 12px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent); }
+.muted { color: var(--muted); }
+.small { font-size: 13px; line-height: 1.45; color: var(--muted); }
+.tiny { font-size: 12px; color: var(--muted); }
+.body2 { color: var(--ink2); }
+.card { background: var(--surface); border-radius: 20px; padding: 18px; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.card.tight { padding: 6px 18px; gap: 0; }
+.card.accent { background: var(--accent-soft); }
+.stage { background: var(--stage); border-radius: 22px; display: flex; flex-direction: column; align-items: center; padding: 16px 12px 10px; gap: 8px; }
+.row { display: flex; align-items: center; gap: 10px; }
+.row.wrap { flex-wrap: wrap; }
+.row.between { justify-content: space-between; }
+.grow { flex: 1; min-width: 0; }
+.stack { display: flex; flex-direction: column; gap: 10px; }
+.grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.grid3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.grid4 { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px 8px; }
+
+button, .btn { font: inherit; cursor: pointer; }
+.btn { min-height: 52px; border-radius: 14px; border: 1px solid transparent; padding: 0 18px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; font-weight: 800; font-size: 16px; text-decoration: none; width: 100%; background: var(--accent); color: var(--on-accent); }
+.btn.secondary { background: var(--surface); color: var(--ink); border-color: var(--field); font-weight: 700; }
+.btn.soft { background: var(--accent-soft); color: var(--accent-ink); }
+.btn.dark { background: var(--ink); color: var(--bg); }
+.btn.small-btn { min-height: 44px; font-size: 14px; width: auto; padding: 0 14px; }
+.btn[disabled] { opacity: .5; cursor: not-allowed; }
+.link { background: none; border: 0; padding: 10px 0; min-height: 44px; color: var(--accent); font-weight: 800; font-size: 14px; text-align: left; display: inline-flex; align-items: center; gap: 8px; }
+.link.danger { color: var(--bad); }
+.iconbtn { width: 44px; height: 44px; border-radius: 12px; border: 0; background: var(--surface); color: var(--ink); display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+
+.chip { min-height: 44px; padding: 0 14px; border-radius: 12px; border: 1px solid var(--field); background: var(--surface); color: var(--ink); font-weight: 600; font-size: 14px; }
+.chip[aria-pressed="true"] { border: 2px solid var(--accent); background: var(--accent-soft); color: var(--accent-ink); font-weight: 800; }
+.pill { display: inline-flex; align-items: center; gap: 6px; border-radius: 999px; padding: 5px 11px; font-size: 12px; font-weight: 800; white-space: nowrap; }
+.pill.neutral { background: var(--surface); color: var(--ink); border: 1px solid var(--line); font-weight: 600; }
+.pill.acc { background: var(--accent-soft); color: var(--accent-ink); }
+.pill.good { background: var(--good-bg); color: var(--good); }
+.pill.warn { background: var(--warn-bg); color: var(--warn); }
+.pill.risky { background: var(--risky-bg); color: var(--risky); }
+.pill.bad { background: var(--bad-bg); color: var(--bad); }
+.notice { border-radius: 14px; padding: 14px 16px; font-size: 14px; line-height: 1.5; }
+.notice.warn { background: var(--warn-bg); color: var(--ink); }
+.notice.good { background: var(--good-bg); color: var(--ink); }
+.notice.bad { background: var(--bad-bg); color: var(--ink); }
+
+label.lbl { font-size: 14px; font-weight: 800; }
+.field { display: flex; align-items: center; gap: 8px; border: 1px solid var(--field); border-radius: 14px; background: var(--surface); padding: 0 14px; }
+.field input, .field textarea { flex: 1; min-width: 0; border: 0; background: transparent; color: var(--ink); font: inherit; font-size: 17px; padding: 13px 0; outline: none; }
+.field textarea { font-size: 15px; resize: vertical; min-height: 84px; }
+.field:focus-within { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
+.unit { font-weight: 700; color: var(--muted); }
+
+.topbar { display: flex; align-items: center; gap: 12px; }
+.topbar .title { font-size: 14px; font-weight: 800; }
+.progress { height: 6px; border-radius: 3px; background: var(--line); overflow: hidden; }
+.progress > i { display: block; height: 100%; background: var(--accent); border-radius: 3px; }
+
+.sw { border-radius: 8px; border: 1px solid var(--line); }
+.swatch-cell { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.swatch-cell .sw { height: 48px; border-radius: 10px; }
+.swatch-cell b { font-size: 12px; font-weight: 700; overflow-wrap: anywhere; }
+.swatch-cell span { font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+.list-row { display: flex; align-items: center; gap: 12px; background: var(--surface); border-radius: 14px; padding: 10px 12px; border: 0; width: 100%; text-align: left; color: var(--ink); }
+.thumb { width: 44px; height: 54px; border-radius: 8px; flex-shrink: 0; object-fit: cover; }
+.axis { display: flex; gap: 12px; padding: 14px 0; border-top: 1px solid var(--line); }
+.axis:first-child { border-top: 0; }
+.axis .tag { width: 92px; flex-shrink: 0; }
+.axis-title { font-weight: 800; font-size: 14px; }
+.verdict-banner { border-radius: 20px; padding: 18px; display: flex; flex-direction: column; gap: 8px; }
+.verdict-banner h2 { font-size: 19px; }
+.shots { display: flex; gap: 8px; flex-wrap: wrap; }
+.shots img { width: 64px; height: 84px; object-fit: cover; border-radius: 10px; border: 1px solid var(--line); }
+.steps .st { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-top: 1px solid var(--line); }
+.steps .st:first-child { border-top: 0; }
+.dot { width: 24px; height: 24px; border-radius: 12px; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; }
+.dot.done { background: var(--good); color: var(--surface); }
+.dot.now { border: 3px solid var(--accent); }
+.dot.now::after { content: ""; width: 8px; height: 8px; border-radius: 4px; background: var(--accent); }
+.dot.wait { border: 2px solid var(--field); }
+.spinner { width: 36px; height: 36px; border-radius: 50%; border: 4px solid var(--accent-soft); border-top-color: var(--accent); animation: spin 0.9s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .spinner { animation-duration: 3s; } }
+.hscroll { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: thin; }
+.opt { width: 116px; flex-shrink: 0; border-radius: 14px; border: 1px solid var(--line); background: var(--surface); padding: 8px; display: flex; flex-direction: column; gap: 6px; text-align: left; color: var(--ink); }
+.opt[aria-pressed="true"] { border: 2px solid var(--accent); padding: 7px; }
+.opt .sw { height: 60px; }
+.opt b { font-size: 12px; line-height: 1.3; }
+.opt span { font-size: 11px; color: var(--muted); }
+.folder { border-radius: 16px; border: 1px solid var(--line); background: var(--surface); padding: 12px; display: flex; flex-direction: column; gap: 8px; text-align: left; color: var(--ink); min-width: 0; }
+.folder[aria-pressed="true"] { border: 2px solid var(--accent); padding: 11px; }
+.folder .strip { display: grid; grid-template-columns: repeat(4, 1fr); gap: 3px; }
+.folder .strip i { height: 26px; border-radius: 5px; background: var(--soft); }
+.folder.new { border-style: dashed; border-color: var(--field); align-items: center; justify-content: center; color: var(--accent); font-weight: 800; min-height: 104px; }
+.dark-hero { background: #3E2A1F; color: #FBF5EE; border-radius: 22px; padding: 20px; display: flex; flex-direction: column; gap: 10px; }
+.dark-hero h1 { color: #FBF5EE; }
+.dark-hero .k { color: #E9D3C6; font-size: 13px; font-weight: 600; }
+.dark-hero p { color: #F1E6D2; }
+.confirm { border: 2px solid var(--bad); border-radius: 14px; padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+
+nav.tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 20; background: var(--surface); border-top: 1px solid var(--line); padding-bottom: env(safe-area-inset-bottom, 0px); padding-left: max(8px, env(safe-area-inset-left, 0px)); padding-right: max(8px, env(safe-area-inset-right, 0px)); }
+nav.tabs .in { max-width: 480px; margin: 0 auto; display: grid; grid-template-columns: repeat(4, 1fr); }
+nav.tabs button { background: none; border: 0; min-height: 64px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; font-size: 12px; font-weight: 600; color: var(--muted); }
+nav.tabs button[aria-current="page"] { color: var(--accent); font-weight: 800; }
+.vh { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+</style>
+
+<div id="app" class="app" aria-live="polite">
+  <div class="stack" style="align-items:center;padding-top:80px">
+    <div class="spinner" role="status" aria-label="Loading"></div>
+    <p class="small">Opening your profile…</p>
+  </div>
+</div>
+<nav class="tabs" id="tabs" hidden aria-label="Main menu"><div class="in" id="tabsIn"></div></nav>
+<input type="file" id="fileSelfieCam" class="vh" accept="image/*" capture="user" aria-label="Take a selfie">
+<input type="file" id="fileSelfie" class="vh" accept="image/*" aria-label="Choose a selfie">
+<input type="file" id="fileShots" class="vh" accept="image/*" multiple aria-label="Add screenshots">
+<input type="file" id="fileColor" class="vh" accept="image/*" aria-label="Choose a photo of the item">
+<input type="file" id="fileGarment" class="vh" accept="image/*" aria-label="Choose the shop photo of the item">
+
+<script>
+"use strict";
+
+/* ===================== Data ===================== */
+
+const MEASURES = [
+  { key: "heightCm", title: "Height", unit: "cm", req: true, min: 120, max: 220, how: "Stand barefoot with your back and heels against a wall. Lay a book flat on your head, mark the wall under it, and measure from the floor to the mark.", why: "Used to work out where hems and lengths will land on you." },
+  { key: "bustCm", title: "Bust", unit: "cm", req: true, min: 60, max: 180, how: "Wrap the tape around the fullest part of your bust, level across your back. Wear a non-padded bra.", why: "Key for tops, dresses and jackets." },
+  { key: "waistCm", title: "Waist", unit: "cm", req: true, min: 45, max: 180, how: "Find the narrowest part of your torso, usually 2–3 cm above the navel. Breathe out normally — don’t hold your stomach in.", why: "Key for skirts, trousers and belted dresses." },
+  { key: "hipsCm", title: "Hips", unit: "cm", req: true, min: 60, max: 190, how: "Stand with feet together and measure around the fullest part of your seat. Check in a mirror that the tape stays level.", why: "Often the measurement that decides the size of trousers and dresses." },
+  { key: "underbustCm", title: "Underbust", unit: "cm", req: false, min: 55, max: 160, how: "Measure directly under your bust, snug against the ribcage.", why: "Needed for bras, swimwear and fitted bodices." },
+  { key: "shouldersCm", title: "Shoulders", unit: "cm", req: false, min: 25, max: 60, how: "Measure across your back from one shoulder bone to the other. This one is easier with a helper.", why: "Shows whether jackets and shirts will sit right on the shoulder." },
+  { key: "thighCm", title: "Thigh", unit: "cm", req: false, min: 35, max: 100, how: "Measure around the fullest part of your upper thigh, just below the crotch.", why: "Helps with slim and straight-leg jeans." },
+  { key: "calfCm", title: "Calf", unit: "cm", req: false, min: 25, max: 70, how: "Stand with weight on both feet and measure around the widest part of your calf.", why: "Compared with the boot shaft, so you know if boots will zip up." },
+  { key: "inseamCm", title: "Inseam", unit: "cm", req: false, min: 55, max: 100, how: "Barefoot, measure from the crotch down the inside of the leg to the floor. Or measure the inside seam of trousers that are the right length.", why: "Tells you whether trousers will need shortening." },
+  { key: "armCm", title: "Arm length", unit: "cm", req: false, min: 40, max: 80, how: "With your arm slightly bent, measure from the shoulder bone over the elbow to the wrist bone.", why: "Shows whether sleeves will be too short or too long." },
+  { key: "footCm", title: "Foot length", unit: "cm", req: false, min: 18, max: 32, how: "Stand on paper with your heel against a wall and trace your foot. Measure from the heel to the longest toe. Do both feet in the evening and use the longer one.", why: "Matched to each brand’s shoe size chart." },
+  { key: "weightKg", title: "Weight", unit: "kg", req: false, min: 30, max: 250, how: "Optional. Weigh yourself in the morning on the same scale.", why: "Only used to read size charts that list weight. Never shown or commented on." },
+];
+const TIPS = ["Use a soft tape measure, not a metal one.", "Measure over thin underwear or close-fitting clothes.", "Keep the tape level all the way around — check in a mirror.", "Snug, not tight: one finger should slide under the tape.", "Stand straight and relaxed, feet together, looking ahead.", "Measure twice. If the numbers differ, use the average."];
+const SLOTS = ["dress", "top", "bottom", "outerwear", "shoes", "bag", "accessory"];
+const SLOT_LABEL = { dress: "Dress", top: "Top", bottom: "Bottom", outerwear: "Outerwear", shoes: "Shoes", bag: "Bag", accessory: "Accessory" };
+const OCCASIONS = ["Office", "Weekend", "Evening", "Travel"];
+const FOLDER_FOR = { Office: "Work", Weekend: "Weekend", Evening: "Evening", Travel: "Vacation" };
+const ITEM_COLORS = [["Black","#1E1D22"],["White","#FAFAF7"],["Cream","#F1E6D2"],["Beige","#C8A27A"],["Camel","#B88A5A"],["Brown","#5A3A28"],["Grey","#9A9CA3"],["Navy","#1F2A4A"],["Blue","#5C6F8A"],["Teal","#2F7D74"],["Olive","#6E6B2F"],["Green","#3E7A4A"],["Mustard","#C9962B"],["Rust","#9C4A25"],["Terracotta","#B5603F"],["Red","#B3261E"],["Pink","#E7A6BF"],["Purple","#6B3F8F"]];
+const VERDICT = { buy: ["Buy it", "good"], conditional: ["Conditional", "warn"], risky: ["Risky", "risky"], no: ["Won’t fit", "bad"] };
+const RATING = { good: ["Good", "good"], watch: ["Watch out", "warn"], bad: ["Problem", "bad"] };
+const AXIS = { size: "Size", cut: "Cut and proportions", color: "Color", fabric: "Fabric" };
+
+const DEFAULT_DATA = () => ({ v: 1, onboarded: false, m: {}, notes: [], colorType: null, checks: [], wardrobe: [], folders: ["Work", "Weekend", "Evening", "Vacation"], looks: [], fits: [] });
+
+const S = {
+  data: DEFAULT_DATA(),
+  view: "boot", params: {}, history: [],
+  ui: {},
+  mem: { files: {}, shots: [], selfie: null, selfieUrl: null },
+  caps: { sample: null, db: null, downloads: null, uid: null, images: null },
+};
+
+/* ===================== Helpers ===================== */
+
+const $ = (s) => document.querySelector(s);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const hex = (h, fb = "#9A9CA3") => (typeof h === "string" && /^#[0-9a-fA-F]{6}$/.test(h.trim()) ? h.trim() : fb);
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+const arr = (x) => (Array.isArray(x) ? x : []);
+const cap = (s) => String(s || "").charAt(0).toUpperCase() + String(s || "").slice(1);
+
+function bodyShape(m) {
+  const b = m.bustCm, w = m.waistCm, h = m.hipsCm;
+  if (!b || !w || !h) return null;
+  if (h - b >= 5 && h - w >= 18) return "pear";
+  if (b - h >= 5 && b - w >= 18) return "inverted triangle";
+  if (Math.abs(b - h) < 5 && (b - w >= 18 || h - w >= 18)) return "hourglass";
+  if (w >= b && w >= h) return "apple";
+  return "rectangle";
+}
+const heightCat = (h) => (!h ? null : h < 160 ? "petite" : h >= 175 ? "tall" : "regular");
+const completeness = (m) => Math.round((MEASURES.filter((s) => m[s.key] != null).length / MEASURES.length) * 100);
+const hasMinimum = (m) => MEASURES.filter((s) => s.req).every((s) => m[s.key] != null);
+const catToSlot = (c) => (c === "boots" ? "shoes" : SLOTS.includes(c) ? c : "accessory");
+
+function rgb(h) { const n = parseInt(hex(h).slice(1), 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; }
+function dist(a, b) { const x = rgb(a), y = rgb(b), rm = (x[0] + y[0]) / 2; const dr = x[0] - y[0], dg = x[1] - y[1], db = x[2] - y[2]; return Math.sqrt((2 + rm / 256) * dr * dr + 4 * dg * dg + (2 + (255 - rm) / 256) * db * db); }
+function paletteFit(h, ct) {
+  if (!h || !ct) return "unknown";
+  const near = (l) => Math.min(Infinity, ...arr(l).map((s) => dist(h, s.hex)));
+  const best = near(ct.best), neu = near(ct.neutrals), avoid = near(ct.avoid);
+  if (avoid < Math.min(best, neu) && avoid < 120) return "avoid";
+  if (best < 150) return "in";
+  if (neu < 150) return "neutral";
+  return avoid < 200 ? "avoid" : "unknown";
+}
+
+/* Deterministic size match: smallest size where no measurement is over its max (stretch gives tolerance). */
+function matchSize(chart, m, stretch) {
+  const keys = { bust: "bustCm", waist: "waistCm", hips: "hipsCm", inseam: "inseamCm", footLength: "footCm" };
+  const f = chart.unit === "in" ? 2.54 : 1;
+  const tol = stretch === "high" ? 3 : stretch === "some" ? 1.5 : 0;
+  const rows = arr(chart.rows).map((r) => {
+    const fits = [];
+    for (const k of Object.keys(keys)) {
+      const body = m[keys[k]], rg = r[k];
+      if (body == null || !rg || (rg.min == null && rg.max == null)) continue;
+      const min = rg.min != null ? Math.round(rg.min * f * 10) / 10 : null;
+      const max = rg.max != null ? Math.round(rg.max * f * 10) / 10 : null;
+      let status = "fits", diff = 0;
+      if (max != null && body > max) { status = "tight"; diff = Math.round((body - max) * 10) / 10; }
+      else if (min != null && body < min) { status = "loose"; diff = Math.round((min - body) * 10) / 10; }
+      fits.push({ measure: k, body, min, max, status, diff });
+    }
+    return { size: String(r.size), fits };
+  });
+  const ok = (r) => r.fits.length > 0 && r.fits.every((x) => x.status !== "tight" || x.diff <= tol);
+  const i = rows.findIndex(ok);
+  let recommended = i >= 0 ? rows[i].size : rows.some((r) => r.fits.length) ? rows[rows.length - 1].size : null;
+  let borderline = null;
+  if (i > 0) { const t = rows[i - 1].fits.filter((x) => x.status === "tight"); if (t.length === 1 && t[0].diff <= 2) borderline = { size: rows[i - 1].size, measure: t[0].measure, overCm: t[0].diff }; }
+  return { recommended, borderline, rows };
+}
+const lengthShift = (model, user) => (model && user ? Math.round((model - user) * 0.47 * 10) / 10 : null);
+
+function profileForAI() {
+  const d = S.data, ct = d.colorType;
+  return {
+    measurementsCm: d.m, bodyShape: bodyShape(d.m), heightCategory: heightCat(d.m.heightCm), notes: d.notes,
+    colorType: ct ? { season: ct.season, undertone: ct.undertone, contrast: ct.contrast, best: ct.best, avoid: ct.avoid } : null,
+  };
+}
+
+/* ===================== Storage ===================== */
+
+let saveTimer = null;
+function save() {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(persist, 600);
+}
+async function persist() {
+  const d = S.data;
+  let json = JSON.stringify(d);
+  while (json.length > 230000 && d.checks.length > 5) { d.checks.pop(); json = JSON.stringify(d); }
+  try { localStorage.setItem("wifm", json); } catch (e) { /* storage may be blocked */ }
+  if (S.caps.db && S.caps.uid) {
+    try { await S.caps.db.doc("data/users/" + S.caps.uid + "/app").set(JSON.parse(json)); S.ui.saveError = null; }
+    catch (e) { S.ui.saveError = e && e.code === "quota_exceeded" ? "Storage is full — delete some old checks." : null; }
+  }
+}
+async function load() {
+  let loaded = null;
+  if (S.caps.db && S.caps.uid) {
+    try { const snap = await S.caps.db.doc("data/users/" + S.caps.uid + "/app").get(); if (snap.exists) loaded = snap.data(); } catch (e) { /* fall back */ }
+  }
+  if (!loaded) { try { const raw = localStorage.getItem("wifm"); if (raw) loaded = JSON.parse(raw); } catch (e) { /* none */ } }
+  if (loaded && typeof loaded === "object") {
+    const base = DEFAULT_DATA();
+    S.data = Object.assign(base, JSON.parse(JSON.stringify(loaded)));
+    S.data.checks = arr(S.data.checks).map((c) => (c.status === "pending" ? Object.assign({}, c, { status: "error", error: "Interrupted — add the screenshots again to retry." }) : c));
+  }
+}
+
+/* ===================== AI ===================== */
+
+function aiError(e) {
+  const code = e && e.code;
+  if (code === "not_granted" || code === "sampling_disabled") return "AI checks need your permission. Allow Claude for this page and try again.";
+  if (code === "rate_limited") return "You’ve hit your Claude usage limit for now. Try again a bit later.";
+  if (code === "image_rejected") return "One of the images couldn’t be read. Use a JPG or PNG screenshot.";
+  if (code === "images_unavailable") return "This view can’t send photos to Claude. Open the page in the Claude app or on claude.ai.";
+  if (code === "invalid_json") return "The answer came back incomplete. Tap Try again.";
+  if (code === "refused") return "Claude couldn’t analyse this. Try a different photo.";
+  if (code === "session_expired") return "Please sign in to Claude again.";
+  if (code === "cancelled") return "Stopped.";
+  return (e && e.message && !e.code) ? e.message : "Something went wrong. Tap Try again.";
+}
+
+const RULES = `Tone: warm, direct, practical, plain English, short sentences. Never judge or comment on the person's body or weight; never suggest dieting or "fixing" a figure. Describe garments, not people ("this cut isn't made for a 12 cm waist-to-hip difference", not "your hips are wide"). Never invent facts, prices, size charts or reviews; if data is missing, say so and lower confidence.`;
+
+const COLOR_PROMPT = `You are a professional color analyst in a shopping app. The image is the user's selfie. Determine their seasonal color type with the 12-season system.
+Steps: 1) Check photo quality first (daylight vs lamps, color cast, filters, heavy makeup, shadows, hair and neck visible). If it can't be analysed reliably set quality.ok=false and give 1-3 short friendly fixes, but still give your best estimate. 2) Correct mentally for the light's color cast. 3) Read skin undertone, hair color and eye color: a representative #RRGGBB and a short label for each. 4) Judge contrast, chroma and value. 5) Choose the season and build the palette and guide.
+Be honest that cameras distort color: "high" confidence only for clean daylight photos. Use the photo only to analyse color; do not describe the person's appearance otherwise and never try to identify them.
+${RULES}
+Reply with only JSON in exactly this shape (12 items in best, 3-4 in neutrals, 4 in avoid, 4 combos with 3 colors each, 4 swaps for black, white, grey and navy, 6-8 textures, 4 beauty items for Lips, Cheeks, Eyes, Hair color with 2 colors each):
+{"quality":{"ok":true,"issues":[]},"season":"Warm Autumn","summary":"One sentence on what suits this person.","undertone":"warm","contrast":"medium","chroma":"muted","value":"medium","skin":{"hex":"#D9A88A","label":"Warm, golden"},"hair":{"hex":"#6B4A32","label":"Warm brown"},"eyes":{"hex":"#5E6B3A","label":"Olive green"},"metals":["gold","bronze"],"best":[{"name":"Terracotta","hex":"#B5603F"}],"neutrals":[{"name":"Cream","hex":"#F1E6D2"}],"avoid":[{"name":"Icy pink","hex":"#F2C9DA"}],"confidence":"medium","confidenceNote":"Why, and how to double-check.","guide":{"combos":[{"name":"Terracotta, cream, camel","idea":"An outfit idea.","colors":["#B5603F","#F1E6D2","#B88A5A"]}],"swaps":[{"from":"Black","fromHex":"#111111","to":"Dark chocolate","toHex":"#3E2A1F"}],"metalsTip":"One sentence.","textures":["Suede"],"texturesTip":"One sentence.","beauty":[{"area":"Lips","tip":"One sentence.","colors":["#A9473A","#C27A62"]}]}}
+Allowed values: undertone warm|cool|neutral|olive; contrast low|medium|high; chroma muted|medium|bright; value light|medium|deep; confidence high|medium|low.`;
+
+const EXTRACT_PROMPT = (note) => `You read information about ONE clothing, shoe or bag product that the user copied from an online shop: pasted text (product details, size chart, link) and, if attached, screenshots. Extract only facts that are actually given. Never guess a size table. Pasted size tables may have lost their layout: rebuild rows from the order of sizes and numbers, and use the column headers when present.
+If a size table is visible, transcribe it into sizeChart: one row per size, each measurement as {"min":n,"max":n} (a single number means min = max; use null when absent). Map chest/bust to bust, waist to waist, hip to hips, inside leg/inseam to inseam, foot length to footLength. kind is "body" for body measurements, "garment" for garment measurements.
+colorHex: your best estimate of the item's main color as #RRGGBB.
+${note ? `THE USER'S COPIED INFORMATION:\n"""${note.slice(0, 14000)}"""\n` : ""}
+Reply with only JSON in exactly this shape:
+{"found":true,"name":"Midi shirt dress","brand":null,"store":null,"price":null,"oldPrice":null,"category":"dress","colorName":null,"colorHex":"#B5603F","availableSizes":[],"sizeChart":{"unit":"cm","kind":"body","rows":[{"size":"S","bust":{"min":84,"max":88},"waist":null,"hips":null,"inseam":null,"footLength":null}]},"fabric":null,"stretch":"unknown","fit":null,"lengthNote":null,"modelHeightCm":null,"modelSize":null,"shaftCircumferenceCm":null,"reviewsAboutSize":null,"returns":null}
+category is one of dress|top|bottom|outerwear|shoes|boots|bag|accessory|other. stretch is none|some|high|unknown. Use sizeChart null when no table is visible. Set found false if this is not a single clothing, shoe or bag product.`;
+
+const VERDICT_PROMPT = (data) => `You are a personal stylist answering one question before an online purchase: "Will this item fit ME — size, cut and color?"
+You get the user's body profile and color type, facts extracted from the product, and a size match COMPUTED BY CODE from the brand's size chart. Trust the computed numbers; never recompute them. If there is no size chart, estimate from standard EU sizing and lower confidence.
+Judge four axes, each "good", "watch" or "bad", in one or two concrete sentences:
+- size: which size and why not the neighbouring one; use the computed result and the fit history with this brand.
+- cut: how this cut behaves on this body shape and height. Use computedLengthShiftCm when given (positive = the hem lands that many cm lower on the user than on the model). Mention adaptations (belt, hemming, tucking).
+- color: compare the item color with the palette; near the face matters most; if off-palette, say how to wear it anyway.
+- fabric: stretch, structure, sheerness — what it means for fit.
+Overall verdict: "buy" (all good), "conditional" (works with one condition), "risky" (two or more concerns or key data missing, e.g. boot shaft unknown), "no" (will not work).
+${RULES}
+DATA:
+${JSON.stringify(data)}
+Reply with only JSON in exactly this shape:
+{"verdict":"conditional","headline":"Buy it — in size M","recommendedSize":"M","sizeReason":"Two sentences.","confidence":"high","confidenceReason":"One sentence.","axes":[{"axis":"size","rating":"watch","text":"..."},{"axis":"cut","rating":"good","text":"..."},{"axis":"color","rating":"good","text":"..."},{"axis":"fabric","rating":"watch","text":"..."}],"risks":"One or two sentences.","howTo":"One or two sentences.","missing":[]}`;
+
+const LOOK_PROMPT = (data) => `You are a stylist checking a complete outfit for one person. Return exactly three checks titled "Colors" (do the pieces work together and with the palette, especially near the face), "Proportions" (balance for this body shape and height: hem lengths, waist definition, shoes) and "Occasion" (does it suit the occasion). ok=false only for a real problem, and then say how to fix it. Add one short styling tip.
+${RULES}
+DATA:
+${JSON.stringify(data)}
+Reply with only JSON: {"checks":[{"title":"Colors","ok":true,"text":"..."},{"title":"Proportions","ok":true,"text":"..."},{"title":"Occasion","ok":true,"text":"..."}],"tip":"..."}`;
+
+function cleanColorType(r) {
+  const sw = (l) => arr(l).filter((x) => x && x.name).map((x) => ({ name: String(x.name), hex: hex(x.hex) }));
+  const g = r.guide || {};
+  return {
+    quality: { ok: !(r.quality && r.quality.ok === false), issues: arr(r.quality && r.quality.issues).map(String) },
+    season: String(r.season || "Unknown season"), summary: String(r.summary || ""),
+    undertone: String(r.undertone || ""), contrast: String(r.contrast || ""), chroma: String(r.chroma || ""), value: String(r.value || ""),
+    skin: { hex: hex(r.skin && r.skin.hex, "#D9A88A"), label: String((r.skin && r.skin.label) || "") },
+    hair: { hex: hex(r.hair && r.hair.hex, "#6B4A32"), label: String((r.hair && r.hair.label) || "") },
+    eyes: { hex: hex(r.eyes && r.eyes.hex, "#5E6B3A"), label: String((r.eyes && r.eyes.label) || "") },
+    metals: arr(r.metals).map(String), best: sw(r.best), neutrals: sw(r.neutrals), avoid: sw(r.avoid),
+    confidence: ["high", "medium", "low"].includes(r.confidence) ? r.confidence : "medium", confidenceNote: String(r.confidenceNote || ""),
+    guide: {
+      combos: arr(g.combos).map((c) => ({ name: String(c.name || ""), idea: String(c.idea || ""), colors: arr(c.colors).map((h) => hex(h)).slice(0, 3) })),
+      swaps: arr(g.swaps).map((s) => ({ from: String(s.from || ""), fromHex: hex(s.fromHex), to: String(s.to || ""), toHex: hex(s.toHex) })),
+      metalsTip: String(g.metalsTip || ""), textures: arr(g.textures).map(String), texturesTip: String(g.texturesTip || ""),
+      beauty: arr(g.beauty).map((b) => ({ area: String(b.area || ""), tip: String(b.tip || ""), colors: arr(b.colors).map((h) => hex(h)).slice(0, 2) })),
+    },
+  };
+}
+
+async function analyseSelfie(answers, measured) {
+  const sample = S.caps.sample, file = answers || measured ? null : S.mem.selfie;
+  S.ui.an = { step: 0, result: null, error: null };
+  render();
+  const timer = setInterval(() => { if (S.ui.an && !S.ui.an.result && !S.ui.an.error && S.ui.an.step < 5) { S.ui.an.step++; if (S.view === "analyzing") render(); } }, 2500);
+  try {
+    if (!sample) throw { message: "AI isn’t available in this view. Open the page in the Claude app or on claude.ai." };
+    const raw = measured
+      ? await sample.json(COLOR_PROMPT.replace("The image is the user's selfie.", "There is no photo attached: the user's phone measured colors from her selfie by sampling pixels where she tapped (listed below). Skip the photo-quality step: set quality.ok true and issues []. Use these measured colors as the skin, hair and eye readings (keep their hex values). Confidence is at most \"medium\" unless the photo was white-balanced.") + "\n\nMEASURED COLORS:\n" + measured.text, { modelTier: "default" })
+      : answers
+      ? await sample.json(COLOR_PROMPT.replace("The image is the user's selfie.", "There is no photo: the user answered a short questionnaire instead (below). Skip the photo-quality step: set quality.ok true and issues []. Base the season on the answers; confidence is at most \"medium\" and confidenceNote should suggest a daylight selfie to confirm.") + "\n\nQUESTIONNAIRE ANSWERS:\n" + QUIZ.map(([k, t]) => `${t}: ${answers[k]}`).join("\n"), { modelTier: "default" })
+      : await sample.json(COLOR_PROMPT, { images: [file], modelTier: "default" });
+    const ct = cleanColorType(raw || {});
+    if (answers) { ct.fromQuiz = true; ct.quality = { ok: true, issues: [] }; }
+    if (measured) {
+      ct.quality = { ok: true, issues: [] };
+      if (measured.skin) ct.skin.hex = measured.skin;
+      if (measured.hair) ct.hair.hex = measured.hair;
+      if (measured.eyes) ct.eyes.hex = measured.eyes;
+    }
+    S.ui.an.result = ct; S.ui.an.step = 6;
+    if (ct.quality.ok) { S.data.colorType = ct; S.mem.selfie = null; save(); }
+  } catch (e) { S.ui.an.error = aiError(e); }
+  clearInterval(timer);
+  if (S.view === "analyzing") render();
+}
+
+async function runCheck(id) {
+  const c = S.data.checks.find((x) => x.id === id);
+  const files = S.mem.files[id] || [];
+  if (!c) return;
+  const inp = c.input || {};
+  const text = [inp.link ? `LINK: ${inp.link}` : "", inp.details ? `PRODUCT DETAILS:\n${inp.details}` : "", inp.chart ? `SIZE CHART:\n${inp.chart}` : "", !c.input && c.note ? c.note : ""].filter(Boolean).join("\n\n");
+  if (!files.length && !(inp.details || inp.chart)) { c.status = "error"; c.error = "Paste the product details or size chart again to retry."; save(); render(); return; }
+  c.status = "pending"; c.error = null; c.stage = "Reading the product and size chart…"; render();
+  try {
+    const sample = S.caps.sample;
+    if (!sample) throw { message: "AI isn’t available in this view. Open the page in the Claude app or on claude.ai." };
+    const imgOpt = files.length && S.caps.images ? { images: files.slice(0, S.caps.images.maxCount) } : {};
+    const item = await sample.json(EXTRACT_PROMPT(text), Object.assign({ modelTier: "default" }, imgOpt));
+    if (!item || item.found === false) throw { message: "We couldn’t find a single clothing item in what you added. Paste the product details and the size chart." };
+    if (inp.colorHex) { item.colorHex = inp.colorHex; if (!item.colorName && inp.colorName) item.colorName = inp.colorName; }
+    c.stage = "Matching sizes and writing the verdict…"; if (S.view === "check") render();
+    const m = S.data.m;
+    const sizeMatch = item.sizeChart && item.sizeChart.kind === "body" && arr(item.sizeChart.rows).length ? matchSize(item.sizeChart, m, item.stretch) : null;
+    const shift = lengthShift(item.modelHeightCm, m.heightCm);
+    const history = S.data.fits.filter((f) => item.brand && f.brand.toLowerCase() === String(item.brand).toLowerCase()).map((f) => ({ item: f.item, size: f.size, zones: f.zones, kept: f.kept, note: f.note }));
+    const verdict = await sample.json(VERDICT_PROMPT({ profile: profileForAI(), item, computedSizeMatch: sizeMatch && { recommended: sizeMatch.recommended, borderline: sizeMatch.borderline, rows: sizeMatch.rows }, computedLengthShiftCm: shift, fitHistoryWithThisBrand: history }), files.length && S.caps.images ? { images: files.slice(0, 1), modelTier: "default" } : { modelTier: "default" });
+    if (!verdict || !verdict.verdict) throw { code: "invalid_json" };
+    c.result = {
+      item: {
+        name: String(item.name || "Item"), brand: item.brand || null, store: item.store || null, price: item.price || null, oldPrice: item.oldPrice || null,
+        category: String(item.category || "other"), colorName: item.colorName || null, colorHex: hex(item.colorHex), returns: item.returns || null,
+        lengthNote: item.lengthNote || null, modelHeightCm: Number(item.modelHeightCm) || null,
+      },
+      sizeMatch: sizeMatch ? { recommended: sizeMatch.recommended, borderline: sizeMatch.borderline } : null,
+      verdict: {
+        verdict: VERDICT[verdict.verdict] ? verdict.verdict : "risky", headline: String(verdict.headline || ""), recommendedSize: verdict.recommendedSize || null,
+        sizeReason: String(verdict.sizeReason || ""), confidence: String(verdict.confidence || "medium"), confidenceReason: String(verdict.confidenceReason || ""),
+        axes: arr(verdict.axes).filter((a) => AXIS[a.axis]).map((a) => ({ axis: a.axis, rating: RATING[a.rating] ? a.rating : "watch", text: String(a.text || "") })),
+        risks: String(verdict.risks || ""), howTo: String(verdict.howTo || ""), missing: arr(verdict.missing).map(String),
+      },
+    };
+    c.status = "done"; c.stage = null;
+  } catch (e) { c.status = "error"; c.error = aiError(e); }
+  save();
+  render();
+}
+
+/* ===================== Icons & avatar ===================== */
+
+const IC = {
+  search: '<circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/>',
+  heart: '<path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/>',
+  hanger: '<path d="M10 6a2 2 0 1 1 2 2c-.6.3-1 .8-1 1.5V10L3 16.5h18L13 10"/>',
+  user: '<circle cx="12" cy="8" r="3.5"/><path d="M5 20c1-3.6 3.8-5.5 7-5.5s6 1.9 7 5.5"/>',
+  back: '<path d="M15 5l-7 7 7 7"/>', plus: '<path d="M12 5v14M5 12h14"/>', check: '<path d="M5 12l4.5 4.5L19 7"/>',
+  camera: '<path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/>',
+  image: '<rect x="3" y="3" width="18" height="18" rx="3"/><path d="M8 3v4M3 8h4M16 21v-4M21 16h-4"/>',
+  shield: '<path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6z"/>', folder: '<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',
+  tape: '<rect x="3" y="8" width="18" height="8" rx="2"/><path d="M7 8v3M11 8v4M15 8v3M19 8v4"/>', arrow: '<path d="M5 12h14M13 6l6 6-6 6"/>',
+};
+const icon = (n, size = 22, fill = false) => `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="${fill ? "currentColor" : "none"}" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${IC[n]}</svg>`;
+
+/* Body proportions from the measurements. The drawing is made for a 170 cm body with
+   38 cm shoulders, 90 bust, 70 waist, 98 hips; widths are scaled band by band, and the
+   whole figure is scaled by height so a shorter person stands shorter in the frame. */
+function bodyFactors() {
+  const m = S.data.m;
+  const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+  const r = (val, ref, lo = 0.8, hi = 1.35) => (val ? clamp(val / ref, lo, hi) : 1);
+  const h = clamp(m.heightCm || 170, 140, 200);
+  const sh = r(m.shouldersCm, 38), b = r(m.bustCm, 90), w = r(m.waistCm, 70, 0.8, 1.5), hp = r(m.hipsCm, 98);
+  const th = m.thighCm ? r(m.thighCm, 55) : hp, cf = m.calfCm ? r(m.calfCm, 35) : (hp + 1) / 2;
+  return { h, sc: clamp(h / 172, 0.84, 1.1), s: sh, sRef: 1, b, w, hp, th, cf,
+    anchors: [[60, 1], [76, sh], [100, b], [128, w], [182, hp], [250, th], [320, cf], [400, cf]] };
+}
+function widthAt(y, K) {
+  const a = K.anchors;
+  if (y <= a[0][0]) return a[0][1];
+  for (let i = 1; i < a.length; i++) {
+    if (y <= a[i][0]) { const [y0, k0] = a[i - 1], [y1, k1] = a[i]; return k0 + ((k1 - k0) * (y - y0)) / (y1 - y0); }
+  }
+  return a[a.length - 1][1];
+}
+function warpBody(svg, K) {
+  const wx = (x, y) => (100 + (x - 100) * widthAt(y, K)).toFixed(1);
+  return svg
+    .replace(/ d="([^"]*)"/g, (_, d) => ` d="${d.replace(/(-?\d*\.?\d+) (-?\d*\.?\d+)/g, (m, x, y) => `${wx(+x, +y)} ${y}`)}"`)
+    .replace(/<ellipse cx="([\d.]+)" cy="([\d.]+)"/g, (m, cx, cy) => `<ellipse cx="${wx(+cx, +cy)}" cy="${cy}"`);
+}
+
+/* ===================== Garment fitting: shop photo -> YOUR body =====================
+ * RULE (do not regress): a shop photo is NEVER pasted as a plain rectangle.
+ * 1. The cut-out is trimmed to the garment itself (transparent margins removed),
+ *    and its outline is measured row by row (left/right edge of the fabric).
+ * 2. On the avatar, every row is re-drawn at the width the garment would have on
+ *    THIS body at that height: never narrower than the body + ease, and keeping the
+ *    garment's own shape (flare, wide legs, sleeves) relative to its anchor
+ *    (shoulders for tops/dresses/coats, waistband for skirts/trousers).
+ * 3. Length: the chart's "total length" in cm when known (cm -> avatar units by
+ *    the user's height); otherwise the photo's proportions re-scaled from the
+ *    model's height to the user's.
+ * Avatar frame: x centre 100; head top y=14, soles y=397 -> 383 units = user's height.
+ */
+const GF_ROWS = 64;
+const GF_UNITS = 383;
+
+// Half-width of the neutral avatar (all factors 1) at height y, local units.
+const GF_TORSO = [[70, 14], [76, 30], [100, 31], [128, 24], [150, 27], [172, 30], [182, 33], [234, 32], [300, 22], [352, 20], [390, 17]];
+
+function gfLerp(tab, y) {
+  if (y <= tab[0][0]) return tab[0][1];
+  for (let i = 1; i < tab.length; i++) {
+    if (y <= tab[i][0]) { const [y0, v0] = tab[i - 1], [y1, v1] = tab[i]; return v0 + ((v1 - v0) * (y - y0)) / (y1 - y0); }
+  }
+  return tab[tab.length - 1][1];
+}
+
+// Measure the garment outline in an RGBA buffer. Returns the trimmed bounding box
+// (pixels) and GF_ROWS rows of [left, right] as fractions of the box width (null = empty row).
+function gfMeasure(data, W, H, alphaMin = 40) {
+  let x0 = W, x1 = -1, y0 = H, y1 = -1;
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    if (data[(y * W + x) * 4 + 3] >= alphaMin) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+  }
+  if (x1 < 0) return null;
+  const bw = x1 - x0 + 1, bh = y1 - y0 + 1, rows = [];
+  for (let i = 0; i < GF_ROWS; i++) {
+    const ya = y0 + Math.floor((i * bh) / GF_ROWS), yb = Math.max(ya + 1, y0 + Math.floor(((i + 1) * bh) / GF_ROWS));
+    let l = Infinity, r = -1;
+    for (let y = ya; y < yb && y <= y1; y++) {
+      // ignore single stray pixels: need a short run of fabric
+      for (let x = x0; x <= x1; x++) if (data[(y * W + x) * 4 + 3] >= alphaMin && (x === x1 || data[(y * W + x + 1) * 4 + 3] >= alphaMin)) { if (x < l) l = x; break; }
+      for (let x = x1; x >= x0; x--) if (data[(y * W + x) * 4 + 3] >= alphaMin && (x === x0 || data[(y * W + x - 1) * 4 + 3] >= alphaMin)) { if (x > r) r = x; break; }
+    }
+    rows.push(r >= l && r >= 0 ? [(l - x0) / bw, (r - x0 + 1) / bw] : null);
+  }
+  return { box: { x: x0, y: y0, w: bw, h: bh }, rows };
+}
+
+// Pull "total length" (cm) for a size out of a pasted size-chart text.
+function gfChartLengthCm(chart, size) {
+  if (!chart) return null;
+  const lines = String(chart).split(/\n/).map((l) => l.split(/\s*\|\s*|\t+/).map((c) => c.trim()));
+  const head = lines.find((c) => c.some((x) => /length|довжин/i.test(x)) && c.some((x) => /size|розмір|частина/i.test(x)));
+  if (!head) return null;
+  const col = head.findIndex((x) => /total length|length|довжин/i.test(x));
+  const num = (s) => { const m = String(s || "").match(/\d+(?:[.,]\d+)?/); return m ? parseFloat(m[0].replace(",", ".")) : null; };
+  const rows = lines.filter((c) => c !== head && c.length > col && num(c[col]) !== null && /^[A-Z0-9]{1,4}$/i.test(c[0]));
+  if (!rows.length) return null;
+  const want = rows.find((c) => size && c[0].toUpperCase() === String(size).toUpperCase()) || rows[Math.floor(rows.length / 2)];
+  const v = num(want[col]);
+  return v && v > 15 && v < 200 ? v : null;
+}
+
+// Plan the bands: where each measured row of the photo lands on the avatar and how wide.
+// kind: "upper" (top / dress / coat) or "bottom" (skirt / trousers).
+// opts: { K (bodyFactors + widthAt), widthAt, modelH, lengthCm, rise: "high"|"mid"|"low", loose }
+function gfPlan(fit, kind, opts) {
+  const { K, widthAt } = opts;
+  const rows = fit.rows, n = rows.length;
+  const userH = K.h, modelH = opts.modelH || 176;
+  const y0 = kind === "upper" ? 68 : opts.rise === "high" ? 134 : opts.rise === "low" ? 160 : 148;
+  const torso = (y) => gfLerp(GF_TORSO, y) * widthAt(y, K);
+  // Anchor: widest row near the top (shoulders / waistband).
+  const head = rows.slice(0, Math.max(2, Math.round(n * (kind === "upper" ? 0.1 : 0.06)))).filter(Boolean);
+  if (!head.length) return null;
+  const srcAnchor = Math.max(...head.map(([l, r]) => (r - l) / 2)); // fraction of box width
+  const yAnchor = kind === "upper" ? 78 : y0 + 2;
+  const bodyAnchor = torso(yAnchor);
+  // Length in avatar units.
+  let gh;
+  if (opts.lengthCm) gh = (opts.lengthCm * GF_UNITS) / userH;
+  else {
+    // No chart length: read it off the photo. The anchor's real size on the model
+    // (shoulders ≈ 22% of height, a flat waistband ≈ 19%) turns photo pixels into cm.
+    const anchorHalfCm = (kind === "upper" ? 0.111 : 0.095) * modelH;
+    const lengthCm = ((fit.box.h / fit.box.w) / (2 * srcAnchor)) * 2 * anchorHalfCm;
+    gh = (lengthCm * GF_UNITS) / userH;
+  }
+  gh = Math.max(20, Math.min(394 - y0, gh));
+  const bh = gh / n, bands = [];
+  for (let i = 0; i < n; i++) {
+    const row = rows[i];
+    if (!row) continue;
+    const y = y0 + (i + 0.5) * bh;
+    const srcHalf = (row[1] - row[0]) / 2;
+    let body = torso(y);
+    if (opts.loose && y > 100 && y < 182) body = Math.max(body, torso(100) + ((torso(182) - torso(100)) * (y - 100)) / 82);
+    const ease = kind === "upper" ? 2 : 1.2;
+    const half = Math.max((srcHalf / srcAnchor) * bodyAnchor, body + ease);
+    bands.push({ y: y0 + i * bh, h: bh, l: row[0], r: row[1], half });
+  }
+  return { y0, gh, bands };
+}
+
+// Render a plan as SVG: one shared <image>, each band clipped and stretched to its width.
+function gfSVG(url, plan, id) {
+  const IW = 100; // the image is laid out 0..IW wide, then each band is moved/scaled into place
+  let out = `<defs><image id="${id}i" href="${url}" x="0" y="${plan.y0.toFixed(2)}" width="${IW}" height="${plan.gh.toFixed(2)}" preserveAspectRatio="none"/>`;
+  plan.bands.forEach((b, i) => { out += `<clipPath id="${id}${i}"><rect x="0" y="${b.y.toFixed(2)}" width="200" height="${(b.h + 1.2).toFixed(2)}"/></clipPath>`; });
+  out += `</defs>`;
+  plan.bands.forEach((b, i) => {
+    const s = (2 * b.half) / ((b.r - b.l) * IW), cx = ((b.l + b.r) / 2) * IW;
+    out += `<g clip-path="url(#${id}${i})"><use href="#${id}i" transform="translate(${(100 - s * cx).toFixed(2)} 0) scale(${s.toFixed(4)} 1)"/></g>`;
+  });
+  return out;
+}
+
+
+// Everything the fitter needs to know about a piece: its photo outline, the chart
+// length for the recommended size, the model's height and how high it sits.
+function fitPhoto(piece, photo, kind, K, id, loose) {
+  if (!photo.fit) return "";
+  const c = S.data.checks.find((x) => x.id === piece.ref);
+  const size = c && c.result && (c.result.verdict.recommendedSize || (c.result.sizeMatch && c.result.sizeMatch.recommended));
+  const lengthCm = c && c.input ? gfChartLengthCm(c.input.chart, size) : null;
+  const txt = `${piece.name} ${piece.length || ""} ${c && c.input ? c.input.details : ""}`;
+  const rise = /high[- ]?(rise|waist)|висок/i.test(txt) ? "high" : /low[- ]?rise|низьк/i.test(txt) ? "low" : "mid";
+  const plan = gfPlan(photo.fit, kind, { K, widthAt, modelH: Number(piece.modelH) || 176, lengthCm, rise, loose });
+  return plan ? gfSVG(photo.url, plan, id) : "";
+}
+
+function bodyNote(modelH) {
+  const m = S.data.m;
+  const parts = [m.heightCm ? `${m.heightCm} cm tall` : null, m.shouldersCm ? `${m.shouldersCm} cm shoulders` : null, m.bustCm && m.waistCm && m.hipsCm ? `${m.bustCm}/${m.waistCm}/${m.hipsCm}` : null].filter(Boolean);
+  const own = parts.length ? `Drawn to your body: ${parts.join(", ")}.` : "Add your measurements to shape the avatar.";
+  return `${own} Shop photo re-proportioned from a ${modelH ? modelH + " cm" : "typical 176 cm"} model.`;
+}
+
+let avatarSeq = 0;
+function avatarSVG(look, width) {
+  const g = "sh" + ++avatarSeq, shade = `url(#${g})`;
+  const ct = S.data.colorType;
+  const skin = ct ? ct.skin.hex : "#D9A88A", hair = ct ? ct.hair.hex : "#6B4A32", eyes = ct ? ct.eyes.hex : "#5E6B3A";
+  const pieces = look.base ? [] : arr(look.pieces);
+  const get = (s) => pieces.find((p) => p.slot === s);
+  const dress = get("dress"), top = dress ? null : get("top"), bottom = dress ? null : get("bottom");
+  const outer = get("outerwear"), shoes = get("shoes"), bag = get("bag");
+  const skirt = bottom && /skirt|спідниц/i.test(bottom.name);
+  const outerText = outer ? `${outer.name} ${outer.length || ""}` : "";
+  const coatHem = /maxi|long|ankle|midi|calf|довг|макс|міді/i.test(outerText) ? 350 : /coat|trench|parka|knee|пальто|тренч|плащ|парка/i.test(outerText) ? 292 : 196;
+  const shoe = shoes ? (/boot|чобот/i.test(shoes.name) ? "boot" : /sneaker|trainer|крос/i.test(shoes.name) ? "sneaker" : "flat") : null;
+  const DRESS = "M88 72 C80 74 74 76 70 80 C68 86 68 92 70 98 C72 108 74 118 76 128 C77 134 76 140 72 150 C66 164 64 172 64 182 C62 220 58 262 54 300 L146 300 C142 262 138 220 136 182 C136 172 134 164 128 150 C124 140 123 134 124 128 C126 118 128 108 130 98 C132 92 132 86 130 80 C126 76 120 74 112 72 Z";
+  const TOP = "M88 72 C80 74 74 76 70 80 C68 86 68 92 70 98 C72 108 74 118 76 128 C77 140 74 156 70 178 L130 178 C126 156 123 140 124 128 C126 118 128 108 130 98 C132 92 132 86 130 80 C126 76 120 74 112 72 C108 77 92 77 88 72 Z";
+  const TROUSERS = "M70 172 C64 210 70 270 74 330 C75 350 77 370 79 388 L95 388 C96 360 97 320 98 290 C99 262 99 246 100 236 C101 246 101 262 102 290 C103 320 104 360 105 388 L121 388 C123 370 125 350 126 330 C130 270 136 210 130 172 Z";
+  const LEGGINGS = "M70 172 C66 200 72 260 78 300 C78 320 77 336 80 352 C82 366 83 378 83 386 L93 386 C93 360 95 330 96 300 C97 270 99 246 100 234 C101 246 103 270 104 300 C105 330 107 360 107 386 L117 386 C117 378 118 366 120 352 C123 336 122 320 122 300 C128 260 134 200 130 172 Z";
+  const LEGL = "M80 299 C78 318 77 336 80 352 C82 366 83 378 83 386 L93 386 C93 374 94 360 95 344 C96 328 95 314 95 299 Z";
+  const LEGR = "M120 299 C122 318 123 336 120 352 C118 366 117 378 117 386 L107 386 C107 374 106 360 105 344 C104 328 105 314 105 299 Z";
+  const ARML = "M72 80 C64 84 62 96 62 110 C61 128 60 144 58 158 C56 174 55 190 55 204 L64 205 C65 190 66 176 68 162 C70 148 71 132 72 116 Z";
+  const ARMR = "M128 80 C136 84 138 96 138 110 C139 128 140 144 142 158 C144 174 145 190 145 204 L136 205 C135 190 134 176 132 162 C130 148 129 132 128 116 Z";
+  const b = coatHem, mid = (118 + b) / 2, inner = (b + 124) / 2;
+  const ox = b > 300 ? 46 : b > 250 ? 52 : 60;
+  const coatL = `M88 72 C80 74 74 76 70 80 C66 90 66 104 66 118 C64 150 ${ox + 4} ${mid} ${ox} ${b} L88 ${b + 2} C87 ${inner} 87 140 88 124 C90 104 92 86 93 74 Z`;
+  const coatR = `M112 72 C120 74 126 76 130 80 C134 90 134 104 134 118 C136 150 ${196 - ox} ${mid} ${200 - ox} ${b} L112 ${b + 2} C113 ${inner} 113 140 112 124 C110 104 108 86 107 74 Z`;
+  const c = (p) => hex(p && p.colorHex);
+  const K = bodyFactors();
+  const photoOf = (p) => (p && p.ref ? garmentFor(p.ref) : null);
+  const outerPhoto = photoOf(outer), dressPhoto = photoOf(dress), topPhoto = photoOf(top);
+  const upperPhoto = outerPhoto || dressPhoto || topPhoto;
+  const bottomPhoto = photoOf(bottom);
+  let s = `<svg width="${width}" height="${Math.round(width * 2.1)}" viewBox="0 0 200 420" role="img" aria-label="${look.base ? "You, in a neutral base layer" : "You, wearing the selected look"}">
+<defs><linearGradient id="${g}" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#000" stop-opacity=".16"/><stop offset=".32" stop-color="#000" stop-opacity="0"/><stop offset=".7" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".2"/></linearGradient></defs>
+<ellipse cx="100" cy="397" rx="42" ry="4.5" fill="#000" fill-opacity=".09"/>
+<g transform="translate(100 397) scale(${K.sc}) translate(-100 -397)">
+<path d="M79 36 C77 12 123 12 121 36 C124 52 125 70 120 86 C114 84 108 80 105 74 L95 74 C92 80 86 84 80 86 C75 70 76 52 79 36 Z" fill="${hair}"/>
+<path d="M95 58 L95 73 Q100 76 105 73 L105 58 Z" fill="${skin}"/>`;
+  const bodyStart = s.length;
+  if (bottomPhoto && !dress) s += `<path d="${LEGGINGS}" fill="${skin}"/><path d="${LEGGINGS}" fill="${shade}"/>`;
+  else if (dress || skirt) s += `<path d="${LEGL}" fill="${skin}"/><path d="${LEGR}" fill="${skin}"/><path d="${LEGL}" fill="${shade}"/><path d="${LEGR}" fill="${shade}"/>`;
+  else { const p = bottom ? TROUSERS : LEGGINGS; s += `<path d="${p}" fill="${bottom ? c(bottom) : "#4A4855"}"/><path d="${p}" fill="${shade}"/>`; }
+  if (!shoe) s += `<ellipse cx="86" cy="390" rx="9" ry="4" fill="${skin}"/><ellipse cx="114" cy="390" rx="9" ry="4" fill="${skin}"/>`;
+  if (shoe === "flat") s += `<g fill="${c(shoes)}"><path d="M83 383 L93 383 L94 394 L74 394 C74 389 79 386 83 383 Z"/><path d="M117 383 L107 383 L106 394 L126 394 C126 389 121 386 117 383 Z"/></g>`;
+  if (shoe === "sneaker") s += `<g fill="${c(shoes)}"><path d="M82 380 L94 380 L95 391 L72 391 C72 385 77 382 82 380 Z"/><path d="M118 380 L106 380 L105 391 L128 391 C128 385 123 382 118 380 Z"/></g><rect x="71" y="391" width="25" height="4" rx="2" fill="#fff" stroke="#CFCDD6" stroke-width=".6"/><rect x="104" y="391" width="25" height="4" rx="2" fill="#fff" stroke="#CFCDD6" stroke-width=".6"/>`;
+  if (shoe === "boot") s += `<g fill="${c(shoes)}"><path d="M78 312 L96 312 C96 340 95 362 94 382 L95 394 L73 394 C73 388 78 385 82 382 C79 362 77 338 78 312 Z"/><path d="M122 312 L104 312 C104 340 105 362 106 382 L105 394 L127 394 C127 388 122 385 118 382 C121 362 123 338 122 312 Z"/></g>`;
+  if (skirt && !bottomPhoto) { const sk = "M70 172 C66 200 60 250 56 300 L144 300 C140 250 134 200 130 172 Z"; s += `<path d="${sk}" fill="${c(bottom)}"/><path d="${sk}" fill="${shade}"/>`; }
+  if (dress && dressPhoto) { /* drawn as a photo below */ }
+  else if (dress) s += `<path d="${DRESS}" fill="${c(dress)}"/><path d="${DRESS}" fill="${shade}"/><path d="M92 72 L100 82 L108 72 Z" fill="${skin}"/><path d="M75 122 C90 126 110 126 125 122 L125 130 C110 134 90 134 75 130 Z" fill="#000" fill-opacity=".22"/><g stroke="#000" stroke-opacity=".12" fill="none"><path d="M86 186 C84 220 81 262 78 297"/><path d="M100 192 C100 230 100 266 100 298"/><path d="M114 186 C116 220 119 262 122 297"/></g>`;
+  else s += `<path d="${TOP}" fill="${top ? c(top) : "#D8D5CF"}"/><path d="${TOP}" fill="${shade}"/>`;
+  if (bottomPhoto) {
+    // Skirt or trousers from the shop photo, fitted row by row to YOUR body (see gfPlan).
+    s += fitPhoto(bottom, bottomPhoto, "bottom", K, g + "b", false);
+  }
+  if (outer && !outerPhoto) s += `<path d="${coatL}" fill="${c(outer)}"/><path d="${coatR}" fill="${c(outer)}"/><path d="${coatL}" fill="${shade}"/><path d="${coatR}" fill="${shade}"/><path d="M93 74 L84 100 L89 104 Z" fill="#000" fill-opacity=".18"/><path d="M107 74 L116 100 L111 104 Z" fill="#000" fill-opacity=".18"/>`;
+  if (upperPhoto) {
+    // Top, dress or coat from the shop photo, fitted row by row to YOUR body (see gfPlan).
+    const ph = outerPhoto ? outer : dressPhoto ? dress : top;
+    s += fitPhoto(ph, upperPhoto, "upper", K, g + "u", !!outerPhoto);
+  } else {
+    const armFill = outer ? c(outer) : skin;
+    s += `<path d="${ARML}" fill="${armFill}"/><path d="${ARMR}" fill="${armFill}"/><path d="${ARML}" fill="#000" fill-opacity=".08"/>`;
+    if (!outer) s += `<g fill="${dress ? c(dress) : top ? c(top) : "#D8D5CF"}"><path d="M72 80 C64 84 62 96 62 110 L72 112 Z"/><path d="M128 80 C136 84 138 96 138 110 L128 112 Z"/></g>`;
+    s += `<path d="M55 203 C53 211 54 221 58 223 C62 224 65 214 64 204 Z" fill="${skin}"/><path d="M145 203 C147 211 146 221 142 223 C138 224 135 214 136 204 Z" fill="${skin}"/>`;
+  }
+  if (bag) s += `<path d="M116 74 L152 180" stroke="${c(bag)}" stroke-width="2.4" fill="none"/><path d="M138 178 L166 178 C167 190 166 198 164 200 L140 200 C138 198 137 190 138 178 Z" fill="${c(bag)}"/><path d="M138 178 L166 178 L164 188 L140 188 Z" fill="#000" fill-opacity=".2"/>`;
+  s = s.slice(0, bodyStart) + warpBody(s.slice(bodyStart), K);
+  s += `<ellipse cx="86" cy="45" rx="2.6" ry="4.2" fill="${skin}"/><ellipse cx="114" cy="45" rx="2.6" ry="4.2" fill="${skin}"/>
+<path d="M86 32 C86 20 114 20 114 32 L114 44 C114 55 107 63 100 63 C93 63 86 55 86 44 Z" fill="${skin}"/>
+<ellipse cx="91" cy="50" rx="3.6" ry="2" fill="#D7846C" fill-opacity=".3"/><ellipse cx="109" cy="50" rx="3.6" ry="2" fill="#D7846C" fill-opacity=".3"/>
+<ellipse cx="94" cy="42" rx="3" ry="1.7" fill="#F6F1EC"/><ellipse cx="106" cy="42" rx="3" ry="1.7" fill="#F6F1EC"/>
+<circle cx="94.2" cy="42" r="1.45" fill="${eyes}"/><circle cx="105.8" cy="42" r="1.45" fill="${eyes}"/><circle cx="94.2" cy="42" r=".6" fill="#1E1A16"/><circle cx="105.8" cy="42" r=".6" fill="#1E1A16"/>
+<path d="M91 41.3 Q94 39.5 97 41.3" stroke="#3B2F25" stroke-width=".8" fill="none"/><path d="M103 41.3 Q106 39.5 109 41.3" stroke="#3B2F25" stroke-width=".8" fill="none"/>
+<path d="M90.5 37.6 Q94 35.8 97.5 37" stroke="${hair}" stroke-width="1.2" stroke-linecap="round" fill="none"/><path d="M102.5 37 Q106 35.8 109.5 37.6" stroke="${hair}" stroke-width="1.2" stroke-linecap="round" fill="none"/>
+<path d="M100 43 L98.6 50 Q100 51.2 101.6 50" stroke="#000" stroke-opacity=".25" stroke-width=".9" stroke-linecap="round" fill="none"/>
+<path d="M95.5 55 Q98 53.4 100 54.4 Q102 53.4 104.5 55 Q100 56.2 95.5 55 Z" fill="#B9675A"/><path d="M95.5 55 Q100 58.6 104.5 55 Q100 56.2 95.5 55 Z" fill="#C67466"/>
+<path d="M86 36 C86 20 100 14 112 22 C116 26 115 32 114 36 C108 28 98 26 88 40 Z" fill="${hair}"/></g></svg>`;
+  return s;
+}
+
+/* ===================== Navigation ===================== */
+
+const TAB_VIEWS = ["home", "wishlist", "looks", "profile"];
+function go(view, params = {}, opts = {}) {
+  if (!opts.replace && S.view !== "boot") S.history.push([S.view, S.params]);
+  if (TAB_VIEWS.includes(view)) S.history = [];
+  S.view = view; S.params = params; S.ui.confirm = null;
+  render();
+  window.scrollTo(0, 0);
+}
+function back() {
+  const prev = S.history.pop();
+  if (prev) { S.view = prev[0]; S.params = prev[1]; render(); window.scrollTo(0, 0); }
+  else go(S.data.onboarded ? "home" : "welcome", {}, { replace: true });
+}
+const topbar = (title, right = "") => `<div class="topbar"><button class="iconbtn" data-a="back" aria-label="Back">${icon("back", 20)}</button><span class="title">${esc(title)}</span><span class="grow"></span>${right}</div>`;
+
+/* ===================== Views ===================== */
+
+const V = {};
+
+V.welcome = () => `
+  <p class="eyebrow" style="padding-top:12px">Will it fit me?</p>
+  <h1 class="xl">Know before you buy</h1>
+  <p class="body2">Screenshot any item from any shop. We check size, cut and color against your body and your color type — and show it on you.</p>
+  <div class="stage">${avatarSVG({ base: true }, 160)}</div>
+  ${S.caps.sample ? "" : `<div class="notice warn">Open this page in the Claude app or on claude.ai to use the AI checks.</div>`}
+  <button class="btn" data-a="startOnboarding">Get started</button>
+  ${hasMinimum(S.data.m) ? `<button class="btn secondary" data-a="finish">Continue with my profile</button>` : ""}
+  <p class="tiny" style="text-align:center">Your measurements are saved privately to your Claude account. Your selfie is analysed once and never stored.</p>`;
+
+V.onboarding = () => {
+  const only = S.params.only;
+  const steps = only ? MEASURES.filter((s) => s.key === only) : MEASURES;
+  const i = Math.min(S.ui.step || 0, steps.length - 1), st = steps[i];
+  const val = S.ui.mval != null ? S.ui.mval : S.data.m[st.key] ?? "";
+  const skip = !only && !st.req ? `<button class="link" data-a="mSkip">Skip</button>` : "";
+  return `${topbar(only ? "Edit measurement" : `Step ${i + 1} of ${steps.length} · measurements`, skip)}
+    ${only ? "" : `<div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="${steps.length}" aria-valuenow="${i + 1}"><i style="width:${((i + 1) / steps.length) * 100}%"></i></div>`}
+    <div class="row"><h1>${esc(st.title)}</h1>${st.req ? "" : `<span class="tiny">optional</span>`}</div>
+    <div class="card"><div class="row" style="color:var(--accent)">${icon("tape")}<b style="color:var(--ink)">How to measure</b></div><p class="body2">${esc(st.how)}</p><p class="tiny">${esc(st.why)}</p></div>
+    <button class="link" data-a="go" data-v="guide">Full measuring guide</button>
+    <label class="lbl" for="mInput">Your ${esc(st.title.toLowerCase())}</label>
+    <div class="field"><input id="mInput" inputmode="decimal" autocomplete="off" value="${esc(val)}" data-bind="mval"><span class="unit">${st.unit}</span></div>
+    ${S.ui.mErr ? `<div class="notice bad" role="alert">${esc(S.ui.mErr)}</div>` : ""}
+    <button class="btn" data-a="mNext">${only ? "Save" : i === steps.length - 1 ? "Next: color type" : "Next"}</button>
+    ${i > 0 ? `<button class="btn secondary" data-a="mPrev">Previous</button>` : ""}`;
+};
+
+V.guide = () => `${topbar("Measuring guide")}
+  <h1>How to measure yourself</h1>
+  <p class="body2">About 10 minutes. Accurate measurements are what make every verdict reliable.</p>
+  <div class="card"><h2>Before you start</h2><ul style="margin:0;padding-left:18px;display:grid;gap:6px" class="body2">${TIPS.map((t) => `<li>${esc(t)}</li>`).join("")}</ul></div>
+  ${MEASURES.map((m, i) => `<div class="card" style="flex-direction:row;gap:14px"><span class="dot" style="background:var(--accent);color:var(--on-accent);font-weight:800;font-size:13px">${i + 1}</span><div class="stack grow" style="gap:4px"><b>${esc(m.title)}</b><p class="small body2">${esc(m.how)}</p><p class="tiny">${esc(m.why)}</p></div></div>`).join("")}
+  <div class="card accent"><h2>No tape measure?</h2><p class="small body2">Lay a garment that fits you well flat and measure it: waistband edge to edge (×2 for the full waist), length, inseam. Brand size charts often list garment measurements, so they can be compared directly.</p></div>`;
+
+V.selfie = () => `${topbar("Color type")}
+  <h1>Take a selfie — we’ll find your color type</h1>
+  <div class="stage" style="padding:22px"><div style="width:150px;height:200px;border-radius:50%;border:2.5px dashed var(--muted)"></div><p class="tiny">Fit your face in the frame</p></div>
+  <div class="card">${["Face a window in daylight — no direct sun, no lamps", "No makeup, no filters, glasses off", "Plain white or grey top; hair and neck visible"].map((t) => `<div class="row"><span style="color:var(--good)">${icon("check", 20)}</span><span class="body2">${t}</span></div>`).join("")}</div>
+  <div class="card accent"><b>1. Take the selfie with your phone’s camera</b><p class="small body2">Open your usual Camera app, switch to the front camera, stand facing a window and take the photo. Then come back here.</p></div>
+  <label class="btn" for="fileSelfie" role="button" tabindex="0">${icon("image", 18)}2. Choose my selfie from Photos</label>
+  <button class="btn soft" data-a="go" data-v="quiz">Answer 5 questions instead</button>
+  <p class="tiny" style="text-align:center">${S.caps.images ? "Your selfie is used only to read colors. It is sent once for analysis and never stored." : "Your photo never leaves your phone. You’ll tap your skin, hair and eyes, and only those colors are used."}</p>
+  ${S.data.colorType ? `<button class="link" data-a="go" data-v="colortype">Keep my current result</button>` : `<button class="link" data-a="skipColor">Skip for now — I’ll do it later</button>`}`;
+
+const QUIZ = [
+  ["veins", "Look at the veins on your wrist in daylight. What color are they?", ["Mostly green", "Mostly blue or purple", "Hard to tell, a mix"]],
+  ["metal", "Which jewelry makes your skin look better?", ["Gold", "Silver", "Both look fine"]],
+  ["hair", "Your natural hair color (without dye)", ["Light blond", "Dark blond or light brown", "Medium to dark brown", "Black", "Red or auburn", "Grey or white"]],
+  ["eyes", "Your eye color", ["Blue or grey", "Green or hazel", "Light brown", "Dark brown or black"]],
+  ["skin", "Your skin tone", ["Very fair", "Fair to light", "Medium", "Olive", "Deep"]],
+];
+V.quiz = () => {
+  const q = S.ui.quiz || (S.ui.quiz = {});
+  const done = QUIZ.every(([k]) => q[k]);
+  return `${topbar("Color type")}<h1>Five quick questions</h1>
+  <p class="body2">Answer in daylight, without makeup if you can. We’ll find your season from your answers.</p>
+  ${QUIZ.map(([k, t, opts], i) => `<div class="card"><b>${i + 1}. ${esc(t)}</b><div class="row wrap" style="gap:8px">${opts.map((o) => `<button class="chip" aria-pressed="${q[k] === o}" data-a="quizPick" data-k="${k}" data-val="${esc(o)}">${esc(o)}</button>`).join("")}</div></div>`).join("")}
+  ${S.caps.sample ? `<button class="btn" data-a="quizGo" ${done ? "" : "disabled"}>Find my color type</button>${done ? "" : `<p class="tiny" style="text-align:center">Answer all five to continue.</p>`}` : `<div class="notice warn">Open this page in the Claude app or on claude.ai to get your result.</div>`}`;
+};
+
+const AN_STEPS = ["Checking photo quality", "Correcting for light color", "Reading skin undertone", "Reading hair and eye color", "Measuring contrast", "Matching to 12 seasons"];
+V.analyzing = () => {
+  const an = S.ui.an || { step: 0 };
+  const r = an.result;
+  const find = (i) => !r ? null : i === 2 ? [r.skin.label, [r.skin.hex]] : i === 3 ? [`${r.hair.label} hair, ${r.eyes.label} eyes`, [r.hair.hex, r.eyes.hex]] : i === 4 ? [`${r.contrast} contrast`, []] : i === 5 ? [r.season, r.best.slice(0, 3).map((b) => b.hex)] : null;
+  return `<h1 style="padding-top:8px">Reading your colors</h1>
+  ${S.mem.selfieUrl ? `<img src="${S.mem.selfieUrl}" alt="Your selfie" style="height:200px;width:100%;object-fit:cover;border-radius:20px">` : ""}
+  <div class="card tight steps">${AN_STEPS.map((l, i) => {
+    const done = i < an.step, now = i === an.step && !an.error, f = find(i);
+    return `<div class="st"><span class="dot ${done ? "done" : now ? "now" : "wait"}">${done ? icon("check", 14) : ""}</span><div class="grow"><b style="font-size:14px;color:${done || now ? "var(--ink)" : "var(--muted)"}">${l}</b>${f && done ? `<p class="tiny">${esc(f[0])}</p>` : ""}</div>${f && done ? f[1].map((h) => `<span class="sw" style="width:18px;height:18px;border-radius:5px;background:${h}"></span>`).join("") : ""}</div>`;
+  }).join("")}</div>
+  ${an.error ? `<div class="notice bad" role="alert">${esc(an.error)}</div><button class="btn" data-a="go" data-v="selfie">Try again</button>`
+    : r && !r.quality.ok ? `<div class="notice warn">This photo is hard to read: ${esc(r.quality.issues.join(" "))}</div><button class="btn" data-a="go" data-v="selfie">Retake selfie</button><button class="btn secondary" data-a="useAnyway">Use this result anyway</button>`
+    : r ? `<button class="btn" data-a="go" data-v="colortype">See my color type</button>`
+    : `<p class="small" style="text-align:center">Usually takes 20–60 seconds. Keep this page open.</p>`}`;
+};
+
+const palette = (title, items) => `<div class="card"><h2>${title}</h2><div class="grid4">${items.map((c) => `<div class="swatch-cell"><span class="sw" style="background:${c.hex}"></span><b>${esc(c.name)}</b><span>${c.hex}</span></div>`).join("")}</div></div>`;
+V.colortype = () => {
+  const ct = S.data.colorType;
+  if (!ct) return `${topbar("Color type")}<h1>No color type yet</h1><button class="btn" data-a="go" data-v="selfie">Take a selfie</button>`;
+  return `<p class="tiny" style="padding-top:8px">Your season</p><h1 class="xl">${esc(ct.season)}</h1>
+  <span class="pill acc" style="align-self:flex-start">${ct.fromQuiz ? "Based on your answers" : "Detected automatically from your selfie"}</span>
+  <p class="body2">${esc(ct.summary)}</p>
+  <div class="row wrap">${[`Undertone: ${ct.undertone}`, `Contrast: ${ct.contrast}`, `${cap(ct.chroma)} colors`, ct.metals.length ? `Metal: ${ct.metals.join(", ")}` : ""].filter(Boolean).map((t) => `<span class="pill neutral">${esc(t)}</span>`).join("")}</div>
+  <div class="card"><h2>What we detected</h2><div class="grid3">${[["Skin", ct.skin], ["Hair", ct.hair], ["Eyes", ct.eyes]].map(([l, v]) => `<div class="swatch-cell"><span class="sw" style="height:40px;background:${v.hex}"></span><b>${l}</b><span>${esc(v.label)}</span></div>`).join("")}</div></div>
+  ${palette("Your best colors", ct.best)}${palette("Core neutrals", ct.neutrals)}${palette("Best kept away from your face", ct.avoid)}
+  <div class="notice ${ct.confidence === "high" ? "good" : "warn"}"><b>Confidence: ${esc(ct.confidence)}.</b> ${esc(ct.confidenceNote)}</div>
+  <button class="btn soft" data-a="go" data-v="colorguide">See my color guide</button>
+  <button class="btn secondary" data-a="go" data-v="selfie">Retake selfie</button>
+  <button class="btn" data-a="finish">${S.data.onboarded ? "Done" : "Save and finish"}</button>`;
+};
+
+V.colorguide = () => {
+  const ct = S.data.colorType;
+  if (!ct) return `${topbar("Color guide")}<h1>Find your color type first</h1><button class="btn" data-a="go" data-v="selfie">Take a selfie</button>`;
+  const g = ct.guide;
+  return `${topbar("Color guide")}
+  <div class="dark-hero"><span class="k">Your season</span><h1 class="xl">${esc(ct.season)}</h1><p>${esc(ct.summary)}</p><div class="row" style="gap:6px">${ct.best.slice(0, 6).map((c) => `<span style="flex:1;height:30px;border-radius:6px;background:${c.hex}"></span>`).join("")}</div></div>
+  <div class="card"><h2>Combinations that work on you</h2><p class="small">Put the first color near your face, the rest lower down.</p>
+  ${g.combos.map((c) => `<div class="row" style="gap:12px;border-top:1px solid var(--line);padding-top:12px"><div class="row" style="gap:0">${c.colors.map((h, i) => `<span style="width:30px;height:44px;background:${h};border-radius:${i === 0 ? "8px 0 0 8px" : i === 2 ? "0 8px 8px 0" : "0"}"></span>`).join("")}</div><div class="grow"><b style="font-size:14px">${esc(c.name)}</b><p class="tiny">${esc(c.idea)}</p></div></div>`).join("")}</div>
+  <div class="card"><h2>Swap your basics</h2>${g.swaps.map((s) => `<div class="row"><span class="sw" style="width:34px;height:34px;border-radius:17px;background:${s.fromHex}"></span><span class="small" style="width:72px">${esc(s.from)}</span><span class="muted">${icon("arrow", 16)}</span><span class="sw" style="width:34px;height:34px;border-radius:17px;background:${s.toHex}"></span><b class="grow">${esc(s.to)}</b></div>`).join("")}</div>
+  <div class="card"><h2>Metals and accessories</h2><p class="body2">${esc(ct.metals.join(", "))}. ${esc(g.metalsTip)}</p></div>
+  <div class="card"><h2>Prints and fabrics</h2><div class="row wrap" style="gap:8px">${g.textures.map((t) => `<span class="pill warn" style="font-weight:600">${esc(t)}</span>`).join("")}</div><p class="small">${esc(g.texturesTip)}</p></div>
+  <div class="card"><h2>Makeup and hair</h2>${g.beauty.map((b) => `<div class="row" style="gap:12px"><div class="row" style="gap:4px">${b.colors.map((h) => `<span style="width:20px;height:20px;border-radius:10px;background:${h}"></span>`).join("")}</div><div class="grow"><b style="font-size:13px">${esc(b.area)}</b><p class="tiny">${esc(b.tip)}</p></div></div>`).join("")}</div>
+  <div class="card"><h2>Keep away from your face</h2><p class="small">Love one of these? Wear it as trousers, shoes or a bag, with a palette color on top.</p><div class="grid4">${ct.avoid.map((a) => `<div class="swatch-cell"><span class="sw" style="height:40px;background:${a.hex}"></span><b>${esc(a.name)}</b></div>`).join("")}</div></div>
+  <button class="btn" data-a="go" data-v="outfit">Build a look in my colors</button>`;
+};
+
+const checkRow = (c) => {
+  const it = c.result && c.result.item, v = c.result && c.result.verdict;
+  const title = it ? it.name : c.note ? c.note.slice(0, 40) : "Screenshot check";
+  const meta = it ? [it.brand || it.store, v && v.recommendedSize ? `size ${v.recommendedSize}` : null].filter(Boolean).join(" · ") : c.status === "pending" ? "Checking…" : c.error || "";
+  const badge = c.status === "pending" ? `<span class="pill acc">Checking</span>` : v ? `<span class="pill ${VERDICT[v.verdict][1]}">${VERDICT[v.verdict][0]}</span>` : `<span class="pill bad">Failed</span>`;
+  return `<button class="list-row" data-a="openCheck" data-id="${c.id}"><span class="thumb" style="background:${it ? it.colorHex : "var(--line)"}"></span><span class="grow"><b style="display:block;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(title)}</b><span class="tiny" style="display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(meta)}</span></span>${badge}</button>`;
+};
+
+V.home = () => {
+  const pct = completeness(S.data.m);
+  const shots = S.mem.shots;
+  const F = S.ui.form || (S.ui.form = { link: "", details: "", chart: "", colorHex: null, colorName: null });
+  return `<div class="stack" style="gap:6px;padding-top:8px"><p class="tiny" style="font-weight:700">Will it fit me?</p><h1>Check an item before you buy</h1></div>
+  ${S.caps.sample ? "" : `<div class="notice warn">AI checks need the Claude app or claude.ai. Open this page there.</div>`}
+  ${arr(S.inbox).length ? `<div class="card accent"><h2>Ready to check</h2><p class="small">Items Claude read from the links you sent in chat.</p>
+    ${S.inbox.map((it) => `<div class="row" style="background:var(--surface);border-radius:14px;padding:10px 12px"><span class="thumb" style="background:${hex(it.colorHex)}"></span><div class="grow"><b style="display:block;font-size:14px">${esc(it.name || "Item")}</b><span class="tiny">${esc([it.store, it.price].filter(Boolean).join(" · "))}${it.chart ? "" : " · no size chart found"}</span></div><button class="btn small-btn" data-a="inboxCheck" data-id="${esc(it.id)}">Check</button><button class="iconbtn" style="background:transparent" data-a="inboxDel" data-id="${esc(it.id)}" aria-label="Remove">×</button></div>`).join("")}</div>` : ""}
+  <div class="card">
+    <p class="small">Copy the item’s information from the shop and paste it here, or send the link to Claude in chat (see below). The size chart matters most.</p>
+    <details class="small"><summary style="cursor:pointer;color:var(--accent);font-weight:800;min-height:32px">How to copy text from a screenshot</summary>
+      <p class="small body2" style="padding-top:6px"><b>iPhone:</b> open the screenshot in Photos, press and hold on the text, choose Select All, then Copy.</p>
+      <p class="small body2" style="padding-top:6px"><b>Android:</b> open the screenshot in Google Photos, tap Lens, then Text, select it and tap Copy text.</p>
+      <p class="small body2" style="padding-top:6px">On the shop’s website you can also press and hold on the text and copy it directly.</p></details>
+    <label class="lbl" for="fLink">Link to the item <span class="tiny">optional</span></label>
+    <div class="field"><input id="fLink" inputmode="url" autocomplete="off" placeholder="https://…" value="${esc(F.link)}" data-bind="form.link"></div>
+    <label class="lbl" for="fDetails">Product details</label>
+    <div class="field"><textarea id="fDetails" placeholder="Name, price, fabric, fit, length, the model’s height and size…" data-bind="form.details">${esc(F.details)}</textarea></div>
+    <label class="lbl" for="fChart">Size chart</label>
+    <div class="field"><textarea id="fChart" placeholder="Paste the size table, e.g.&#10;Size  Bust  Waist  Hips&#10;S  84-88  66-70  92-96&#10;M  88-92  70-74  96-100" data-bind="form.chart">${esc(F.chart)}</textarea></div>
+    <b>Item color</b>
+    <div class="row wrap" style="gap:8px">${ITEM_COLORS.map(([n, h]) => `<button aria-label="${n}" aria-pressed="${F.colorHex === h}" data-a="fColor" data-val="${h}" data-name="${n}" style="width:36px;height:36px;border-radius:18px;background:${h};border:${F.colorHex === h ? "3px solid var(--accent)" : "1px solid var(--line)"}"></button>`).join("")}</div>
+    <div class="row">${F.colorHex ? `<span class="pill neutral"><span style="width:14px;height:14px;border-radius:7px;background:${F.colorHex}"></span>${esc(F.colorName || "Picked color")}</span>` : ""}<label class="link" for="fileColor" role="button" tabindex="0" style="cursor:pointer">${icon("image", 18)}Pick the exact color from a photo</label></div>
+    ${S.caps.images ? `<b>Screenshots <span class="tiny">optional</span></b>
+    ${shots.length ? `<div class="shots">${shots.map((s, i) => `<img src="${s.url}" alt="Screenshot ${i + 1}">`).join("")}</div>` : ""}
+    <div class="row"><label class="btn secondary" for="fileShots" role="button" tabindex="0">${icon("image", 18)}${shots.length ? "Add more" : "Add screenshots"}</label>${shots.length ? `<button class="btn secondary small-btn" data-a="clearShots">Clear</button>` : ""}</div>` : ""}
+    ${S.ui.homeErr ? `<div class="notice bad" role="alert">${esc(S.ui.homeErr)}</div>` : ""}
+    ${S.ui.linkOnly ? `<div class="notice warn"><b>The app can’t open websites itself.</b> Send this message to Claude in your chat with the app, and the item will appear here under “Ready to check”:<p style="margin-top:8px;padding:10px;border-radius:10px;background:var(--surface);user-select:all;overflow-wrap:anywhere" id="linkMsg">Read this item for my Will It Fit Me app: ${esc(S.ui.linkOnly)}</p><button class="btn secondary small-btn" style="margin-top:8px" data-a="copyLinkMsg">Copy message</button>${S.ui.copied ? ` <span class="tiny">Copied</span>` : ""}</div>` : ""}
+    <button class="btn" data-a="startCheck">Check it</button>
+  </div>
+  ${pct < 100 ? `<div class="card accent" style="flex-direction:row;align-items:center"><div class="grow"><b style="font-size:14px">Your profile is ${pct}% complete</b><p class="tiny">More measurements = more precise verdicts (calf for boots, inseam for trousers).</p></div><button class="link" data-a="tab" data-v="profile">Complete</button></div>` : ""}
+  ${!S.data.colorType ? `<div class="card accent" style="flex-direction:row;align-items:center"><div class="grow"><b style="font-size:14px">Find your color type</b><p class="tiny">One selfie in daylight. Color advice gets personal.</p></div><button class="link" data-a="go" data-v="selfie">Start</button></div>` : ""}
+  <h2>Recent checks</h2>
+  ${S.data.checks.length ? `<div class="stack">${S.data.checks.slice(0, 12).map(checkRow).join("")}</div>` : `<p class="small">Your checks will appear here.</p>`}`;
+};
+
+V.check = () => {
+  const c = S.data.checks.find((x) => x.id === S.params.id);
+  if (!c) return `${topbar("Item check")}<h1>Check not found</h1>`;
+  const heart = `<button class="iconbtn" data-a="wish" data-id="${c.id}" aria-label="${c.wished ? "Remove from wishlist" : "Add to wishlist"}" style="color:${c.wished ? "var(--accent)" : "var(--ink)"}">${icon("heart", 20, c.wished)}</button>`;
+  if (c.status === "pending") return `${topbar("Item check")}<div class="stack" style="align-items:center;padding:56px 0;text-align:center"><div class="spinner" role="status" aria-label="Checking"></div><h2>${esc(c.stage || "Checking this item…")}</h2><p class="small">Reading the size chart, fabric and photos. Usually 30–90 seconds. Keep this page open.</p></div>`;
+  if (c.status === "error" || !c.result) return `${topbar("Item check")}<div class="notice bad" role="alert">${esc(c.error || "Something went wrong.")}</div>${S.mem.files[c.id] ? `<button class="btn" data-a="retry" data-id="${c.id}">Try again</button>` : ""}<button class="btn secondary" data-a="tab" data-v="home">Back to home</button>`;
+  const { item, verdict: v, sizeMatch } = c.result;
+  const vs = VERDICT[v.verdict], fit = paletteFit(item.colorHex, S.data.colorType);
+  const fitTxt = { in: "in your palette", neutral: "a neutral for you", avoid: "keep away from your face", unknown: "not in your palette" }[fit];
+  return `${topbar("Item check", heart)}
+  <div class="row" style="gap:14px;align-items:center"><span style="width:84px;height:108px;border-radius:12px;background:${item.colorHex};flex-shrink:0"></span>
+    <div class="stack grow" style="gap:4px"><h1 style="font-size:20px">${esc(item.name)}</h1><p class="small">${esc([item.brand, item.store].filter(Boolean).join(" · "))}</p>${item.price ? `<b>${esc(item.price)}${item.oldPrice ? ` <s class="muted" style="font-weight:400">${esc(item.oldPrice)}</s>` : ""}</b>` : ""}</div></div>
+  <div class="verdict-banner" style="background:var(--${vs[1]}-bg)"><h2 style="color:var(--${vs[1]})">${esc(v.headline || vs[0])}</h2><p class="body2">${esc(v.sizeReason)}</p>
+    ${sizeMatch && sizeMatch.borderline ? `<p class="small body2">Size ${esc(sizeMatch.borderline.size)} is close: only the ${esc(sizeMatch.borderline.measure)} is ${sizeMatch.borderline.overCm} cm over.</p>` : ""}
+    <p class="small body2"><b>Confidence: ${esc(v.confidence)}</b> — ${esc(v.confidenceReason)}</p></div>
+  <div class="card tight">${v.axes.map((a) => `<div class="axis"><span class="tag"><span class="pill ${RATING[a.rating][1]}">${RATING[a.rating][0]}</span></span><div class="grow stack" style="gap:4px"><span class="axis-title">${AXIS[a.axis]}</span><p class="small">${esc(a.text)}</p>${a.axis === "color" ? `<div class="row" style="gap:8px"><span style="width:20px;height:20px;border-radius:5px;background:${item.colorHex}"></span><span class="tiny">${esc(item.colorName || "Item color")} · ${fitTxt}</span></div>` : ""}</div></div>`).join("")}</div>
+  <div class="stage">${avatarSVG({ pieces: [{ slot: catToSlot(item.category), name: item.name, colorHex: item.colorHex, length: item.lengthNote || "", modelH: item.modelHeightCm || null, ref: c.id }] }, 170)}
+    <p class="tiny" style="text-align:center">${esc(bodyNote(item.modelHeightCm))}</p>
+    <label class="link" for="fileGarment" role="button" tabindex="0" style="cursor:pointer">${icon("image", 18)}${garmentFor(c.id) ? "Change the shop photo" : "Try it on with the shop photo"}</label>
+    ${S.ui.garErr ? `<div class="notice bad" role="alert">${esc(S.ui.garErr)}</div>` : ""}
+    ${garmentFor(c.id) ? `<button class="link danger" data-a="garRemove" data-id="${c.id}">Use the drawing instead</button>` : ""}</div>
+  <p class="tiny">Save the product photo from the shop (a screenshot is fine), then choose it here. The photo stays on your phone.</p>
+  <div class="card"><h2>What could go wrong</h2><p class="body2">${esc(v.risks)}</p><h2>How to make it work</h2><p class="body2">${esc(v.howTo)}</p>${item.returns ? `<h2>Returns</h2><p class="body2">${esc(item.returns)}</p>` : ""}${v.missing.length ? `<p class="tiny">Missing data: ${esc(v.missing.join(", "))}</p>` : ""}</div>
+  ${c.link ? `<a class="btn" href="${esc(c.link)}" target="_blank" rel="noopener">Open in store</a>` : ""}
+  <button class="btn soft" data-a="go" data-v="outfit" data-id="${c.id}">Complete the look</button>
+  <button class="btn secondary" data-a="go" data-v="fit" data-id="${c.id}">I bought it — tell us how it fits</button>
+  <button class="link danger" data-a="delCheck" data-id="${c.id}">Delete this check</button>`;
+};
+
+V.fit = () => {
+  const c = S.data.checks.find((x) => x.id === S.params.id), it = c && c.result && c.result.item;
+  const f = S.ui.fit || (S.ui.fit = { size: (c && c.result && c.result.verdict.recommendedSize) || "", zones: { bust: "right", waist: "right", hips: "right", length: "right" }, kept: true, note: "", saved: false });
+  const Z = [["bust", "Bust", ["Tight", "Just right", "Loose"]], ["waist", "Waist", ["Tight", "Just right", "Loose"]], ["hips", "Hips", ["Tight", "Just right", "Loose"]], ["length", "Length", ["Too short", "Just right", "Too long"]]];
+  const val = ["tight", "right", "loose"];
+  return `${topbar("Fit feedback")}<h1>How did it fit?</h1><p class="small">${esc([it && it.name, it && it.brand].filter(Boolean).join(" · "))}. Your answer sharpens advice for this brand.</p>
+  <div class="card"><label class="lbl" for="fitSize">Size you bought</label><div class="field"><input id="fitSize" value="${esc(f.size)}" data-bind="fit.size" autocomplete="off"></div>
+  ${Z.map(([k, l, o]) => `<b>${l}</b><div class="grid3">${o.map((t, i) => `<button class="chip" aria-pressed="${f.zones[k] === val[i]}" data-a="fitZone" data-k="${k}" data-val="${val[i]}">${t}</button>`).join("")}</div>`).join("")}</div>
+  <div class="card"><b>Did you keep it?</b><div class="grid2"><button class="chip" aria-pressed="${f.kept}" data-a="fitKept" data-val="1">Kept it</button><button class="chip" aria-pressed="${!f.kept}" data-a="fitKept" data-val="0">Returned it</button></div>
+  <label class="lbl" for="fitNote">Comment</label><div class="field"><textarea id="fitNote" placeholder="For example: buttons don’t gape, length is perfect" data-bind="fit.note">${esc(f.note)}</textarea></div></div>
+  ${f.saved ? `<div class="notice good">Saved to your fit history. Next checks for this brand will take it into account.</div><button class="btn" data-a="tab" data-v="home">Back to home</button>` : `<button class="btn" data-a="fitSave">Save feedback</button>`}`;
+};
+
+function candidates(excludeId) {
+  const out = {}; SLOTS.forEach((s) => (out[s] = []));
+  S.data.wardrobe.forEach((w) => out[w.slot] && out[w.slot].push({ slot: w.slot, name: w.name, colorHex: w.colorHex, source: "wardrobe", ref: w.id }));
+  S.data.checks.forEach((c) => {
+    const it = c.result && c.result.item;
+    if (!it || c.id === excludeId || c.result.verdict.verdict === "no") return;
+    const slot = catToSlot(it.category);
+    out[slot].push({ slot, name: it.name, colorHex: it.colorHex, length: it.lengthNote || "", modelH: it.modelHeightCm || null, source: c.wished ? "wishlist" : "checked", ref: c.id });
+  });
+  return out;
+}
+
+V.outfit = () => {
+  const o = S.ui.outfit || (S.ui.outfit = { picked: {}, occasion: "Office", view: "me", review: null, reviewing: false, error: null, folder: null, picking: false, saved: null });
+  const ac = S.params.id ? S.data.checks.find((c) => c.id === S.params.id) : null;
+  const anchor = ac && ac.result ? { slot: catToSlot(ac.result.item.category), name: ac.result.item.name, colorHex: ac.result.item.colorHex, length: ac.result.item.lengthNote || "", modelH: ac.result.item.modelHeightCm || null, source: "checked", ref: ac.id } : null;
+  const pieces = [anchor, ...SLOTS.map((s) => o.picked[s])].filter(Boolean);
+  const hasDress = pieces.some((p) => p.slot === "dress"), hasSplit = pieces.some((p) => p.slot === "top" || p.slot === "bottom");
+  const slots = SLOTS.filter((s) => s !== (anchor && anchor.slot) && !(hasDress && (s === "top" || s === "bottom")) && !(hasSplit && s === "dress"));
+  const cand = candidates(anchor && anchor.ref);
+  const warn = pieces.filter((p) => ["dress", "top", "outerwear"].includes(p.slot) && paletteFit(p.colorHex, S.data.colorType) === "avoid");
+  const folder = o.folder || FOLDER_FOR[o.occasion] || S.data.folders[0];
+  S.ui.outfitPieces = pieces;
+  const src = (p) => (p.source === "wardrobe" ? "Your wardrobe" : p.source === "wishlist" ? "Wishlist" : "Checked");
+  return `${topbar("Outfit builder")}<h1>Complete the look</h1>
+  <p class="small">${anchor ? `Built around your ${esc(anchor.name.toLowerCase())}. ` : ""}Pieces come from your wardrobe, wishlist and checked items.</p>
+  <div class="row wrap" style="gap:8px">${OCCASIONS.map((x) => `<button class="chip" aria-pressed="${x === o.occasion}" data-a="occ" data-val="${x}">${x}</button>`).join("")}</div>
+  <div class="grid2" style="background:var(--line);border-radius:12px;padding:4px;gap:6px">${[["me", "On me"], ["flat", "Flat lay"]].map(([k, l]) => `<button class="chip" style="border:0;min-height:40px;background:${o.view === k ? "var(--surface)" : "transparent"};font-weight:${o.view === k ? 800 : 600}" aria-pressed="${o.view === k}" data-a="oView" data-val="${k}">${l}</button>`).join("")}</div>
+  ${o.view === "me" ? `<div class="stage">${avatarSVG({ pieces }, 170)}<button class="link" data-a="go" data-v="tryon">Open full view</button></div>`
+    : `<div class="card"><div class="grid3">${pieces.length ? pieces.map((p) => `<div class="swatch-cell"><span class="sw" style="height:90px;background:${hex(p.colorHex)}"></span><span style="text-transform:uppercase;font-weight:800">${SLOT_LABEL[p.slot]}</span><b>${esc(p.name)}</b></div>`).join("") : `<p class="small">Pick pieces below.</p>`}</div></div>`}
+  ${warn.map((p) => `<div class="notice warn">${esc(p.name)}: this color is on your “keep away from the face” list. Wear it open, or swap it.</div>`).join("")}
+  ${slots.map((s) => `<div class="stack"><h2>${SLOT_LABEL[s]}</h2>${cand[s].length ? `<div class="hscroll"><button class="opt" aria-pressed="${!o.picked[s]}" data-a="pickPiece" data-slot="${s}" data-i="-1"><span class="sw" style="background:var(--soft)"></span><b>None</b></button>${cand[s].map((p, i) => `<button class="opt" aria-pressed="${!!o.picked[s] && o.picked[s].ref === p.ref}" data-a="pickPiece" data-slot="${s}" data-i="${i}"><span class="sw" style="background:${hex(p.colorHex)}"></span><b>${esc(p.name)}</b><span>${src(p)}</span></button>`).join("")}</div>` : `<button class="link" data-a="go" data-v="wardrobe">Add ${SLOT_LABEL[s].toLowerCase()} to your wardrobe</button>`}</div>`).join("")}
+  ${o.review ? `<div class="card tight"><div class="row between" style="padding:10px 0"><h2>Look check</h2><span class="pill acc">${o.review.checks.filter((x) => x.ok).length} of ${o.review.checks.length} pass</span></div>${o.review.checks.map((x) => `<div class="axis"><span class="tag"><span class="pill ${x.ok ? "good" : "warn"}">${x.ok ? "Good" : "Watch out"}</span></span><div class="grow"><span class="axis-title">${esc(x.title)}</span><p class="small">${esc(x.text)}</p></div></div>`).join("")}<p class="small" style="padding:10px 0">${esc(o.review.tip)}</p></div>`
+    : `<button class="btn soft" data-a="reviewLook" ${pieces.length < 2 || o.reviewing ? "disabled" : ""}>${o.reviewing ? "Checking the look…" : "Check this look"}</button>`}
+  ${o.error ? `<div class="notice bad" role="alert">${esc(o.error)}</div>` : ""}
+  ${o.saved ? `<div class="notice good">Saved to ${esc(o.saved)}.</div><button class="btn" data-a="tab" data-v="looks">Open Looks</button>`
+    : o.picking ? `<div class="card"><h2>Save to folder</h2><p class="tiny">Suggested from the occasion you picked</p><div class="row wrap" style="gap:8px">${S.data.folders.map((f) => `<button class="chip" aria-pressed="${f === folder}" data-a="oFolder" data-val="${esc(f)}">${esc(f)}</button>`).join("")}</div><button class="btn" data-a="saveLook">Save to ${esc(folder)}</button></div>`
+    : `<button class="btn" data-a="startSave" ${pieces.length ? "" : "disabled"}>Save this look</button>`}`;
+};
+
+V.tryon = () => {
+  const look = S.params.lookId ? S.data.looks.find((l) => l.id === S.params.lookId) : null;
+  const pieces = look ? look.pieces : arr(S.ui.outfitPieces);
+  const base = !!S.ui.tryBase, h = S.data.m.heightCm;
+  return `${topbar(look ? `${look.name} · ${look.folder}` : "Try-on")}
+  <div class="grid2" style="background:var(--line);border-radius:12px;padding:4px;gap:6px">${[[false, "In this look"], [true, "Base layer"]].map(([k, l]) => `<button class="chip" style="border:0;min-height:40px;background:${base === k ? "var(--surface)" : "transparent"};font-weight:${base === k ? 800 : 600}" aria-pressed="${base === k}" data-a="tryBase" data-val="${k ? 1 : 0}">${l}</button>`).join("")}</div>
+  <div class="stage" style="padding:18px 0">${avatarSVG({ pieces, base }, 230)}</div>
+  <div class="row wrap"><span class="pill neutral">Body from your measurements${h ? ` · ${h} cm` : ""}</span><span class="pill neutral">Skin, hair and eyes from your selfie</span></div>
+  ${look && look.review ? `<div class="card">${look.review.checks.map((x) => `<p class="small"><b>${x.ok ? "Good" : "Watch out"} · ${esc(x.title)}:</b> ${esc(x.text)}</p>`).join("")}</div>` : ""}
+  <div class="card" style="flex-direction:row;gap:12px"><span style="color:var(--accent)">${icon("shield")}</span><p class="small body2 grow">Your avatar is always dressed. With no outfit chosen it wears a neutral base layer. It stays private to you.</p></div>
+  <p class="tiny">A preview of proportions and colors, not a photo.</p>
+  ${look ? (S.ui.confirm === "look" ? `<div class="confirm"><b>Delete this look?</b><p class="small">This can’t be undone.</p><div class="grid2"><button class="btn secondary" data-a="cancelConfirm">Cancel</button><button class="btn" style="background:var(--bad);color:var(--surface)" data-a="delLook" data-id="${look.id}">Delete</button></div></div>` : `<button class="link danger" data-a="askConfirm" data-val="look">Delete look</button>`) : ""}`;
+};
+
+V.wishlist = () => {
+  const items = S.data.checks.filter((c) => c.wished);
+  return `<h1 style="padding-top:8px">Wishlist</h1>${items.length ? `<div class="stack">${items.map(checkRow).join("")}</div>` : `<div class="card"><p class="body2">Tap the heart on any verdict to save it here.</p></div>`}`;
+};
+
+V.looks = () => {
+  const L = S.ui.looks || (S.ui.looks = { active: "All looks", creating: false, name: "", moving: null, err: null });
+  const all = S.data.looks, shown = L.active === "All looks" ? all : all.filter((l) => l.folder === L.active);
+  const inF = (f) => (f === "All looks" ? all : all.filter((l) => l.folder === f));
+  return `<div class="row between" style="padding-top:8px"><h1>Looks</h1><button class="btn small-btn" data-a="go" data-v="outfit">${icon("plus", 16)}New look</button></div>
+  <h2>Folders</h2>
+  <div class="grid2">${["All looks", ...S.data.folders].map((f) => { const l = inF(f), cs = l[0] ? l[0].pieces.map((p) => hex(p.colorHex)) : []; return `<button class="folder" aria-pressed="${f === L.active}" data-a="lFolder" data-val="${esc(f)}"><span class="strip">${[0, 1, 2, 3].map((i) => `<i style="${cs[i] ? `background:${cs[i]}` : ""}"></i>`).join("")}</span><b style="font-size:14px">${esc(f)}</b><span class="tiny">${l.length === 1 ? "1 look" : l.length + " looks"}</span></button>`; }).join("")}
+  ${L.creating ? "" : `<button class="folder new" data-a="lNew">${icon("folder")}New folder</button>`}</div>
+  ${L.creating ? `<div class="card"><label class="lbl" for="folderName">Folder name</label><div class="field"><input id="folderName" placeholder="For example: Wedding guest" value="${esc(L.name)}" data-bind="looks.name" autocomplete="off"></div>${L.err ? `<div class="notice bad">${esc(L.err)}</div>` : ""}<div class="grid2"><button class="btn secondary" data-a="lCancel">Cancel</button><button class="btn" data-a="lCreate">Create</button></div></div>` : ""}
+  <h2>${esc(L.active)} · ${shown.length === 1 ? "1 look" : shown.length + " looks"}</h2>
+  ${shown.length ? "" : `<p class="small">No looks here yet. Build one and save it here, or move one in.</p>`}
+  ${shown.map((l) => `<div class="card"><div class="row" style="gap:6px">${l.pieces.slice(0, 5).map((p) => `<span style="flex:1;height:52px;border-radius:10px;border:1px solid var(--line);background:${hex(p.colorHex)}"></span>`).join("")}</div>
+    <div><b>${esc(l.name)}</b><p class="small">${esc(l.pieces.map((p) => p.name).join(", "))}</p></div>
+    <div class="row"><span class="pill acc">${icon("folder", 12)}${esc(l.folder)}</span><span class="grow"></span><button class="btn secondary small-btn" data-a="lMove" data-id="${l.id}">Move</button><button class="btn dark small-btn" data-a="go" data-v="tryon" data-look="${l.id}">Open</button></div>
+    ${L.moving === l.id ? `<div class="stack" style="border-top:1px solid var(--line);padding-top:10px"><b>Move to folder</b><div class="row wrap" style="gap:8px">${S.data.folders.filter((f) => f !== l.folder).map((f) => `<button class="chip" data-a="lMoveTo" data-id="${l.id}" data-val="${esc(f)}">${esc(f)}</button>`).join("")}</div></div>` : ""}</div>`).join("")}
+  <div class="card" style="flex-direction:row;align-items:center;gap:14px"><span class="dot" style="width:48px;height:48px;border-radius:14px;background:var(--accent-soft);color:var(--accent)">${icon("hanger")}</span><div class="grow"><b>My wardrobe · ${S.data.wardrobe.length} items</b><p class="tiny">Add clothes you own so looks use them first.</p></div><button class="btn secondary small-btn" data-a="go" data-v="wardrobe">Open</button></div>`;
+};
+
+V.wardrobe = () => {
+  const W = S.ui.ward || (S.ui.ward = { name: "", slot: "top", hex: "#F1E6D2", err: null });
+  return `${topbar("My wardrobe")}<h1>Clothes you own</h1><p class="body2">Looks use these first, so you buy less and wear more.</p>
+  <div class="card"><h2>Add an item</h2><label class="lbl" for="wName">Name</label><div class="field"><input id="wName" placeholder="e.g. Camel trench" value="${esc(W.name)}" data-bind="ward.name" autocomplete="off"></div>
+  <b>Type</b><div class="row wrap" style="gap:8px">${SLOTS.map((s) => `<button class="chip" aria-pressed="${W.slot === s}" data-a="wSlot" data-val="${s}">${SLOT_LABEL[s]}</button>`).join("")}</div>
+  <b>Color</b><div class="row wrap" style="gap:8px">${ITEM_COLORS.map(([n, h]) => `<button aria-label="${n}" aria-pressed="${W.hex === h}" data-a="wColor" data-val="${h}" style="width:44px;height:44px;border-radius:22px;background:${h};border:${W.hex === h ? "3px solid var(--accent)" : "1px solid var(--line)"}"></button>`).join("")}</div>
+  ${W.err ? `<div class="notice bad">${esc(W.err)}</div>` : ""}<button class="btn" data-a="wAdd">${icon("plus", 18)}Add to wardrobe</button></div>
+  ${SLOTS.filter((s) => S.data.wardrobe.some((w) => w.slot === s)).map((s) => `<div class="card"><h2>${SLOT_LABEL[s]}</h2>${S.data.wardrobe.filter((w) => w.slot === s).map((w) => `<div class="row"><span class="sw" style="width:28px;height:28px;background:${hex(w.colorHex)}"></span><span class="grow">${esc(w.name)}</span><button class="link danger" data-a="wDel" data-id="${w.id}">Remove</button></div>`).join("")}</div>`).join("")}`;
+};
+
+V.profile = () => {
+  const d = S.data, m = d.m, shape = bodyShape(m), hc = heightCat(m.heightCm);
+  return `<div class="row between" style="padding-top:8px"><h1>My profile</h1><span class="pill acc">${completeness(m)}%</span></div>
+  <div class="card"><div class="row between"><h2>Measurements</h2><button class="link" data-a="editAll">Edit all</button></div>
+  <div class="grid2">${MEASURES.map((s) => { const v = m[s.key]; return `<button data-a="editOne" data-k="${s.key}" aria-label="${esc(s.title)}: ${v != null ? v + " " + s.unit : "not set"}. Edit" style="text-align:left;border-radius:12px;padding:10px 12px;background:${v != null ? "var(--soft)" : "transparent"};border:${v != null ? "0" : "1px dashed var(--field)"};color:var(--ink)"><span class="tiny" style="display:block">${esc(s.title)}</span>${v != null ? `<b style="font-size:16px;font-variant-numeric:tabular-nums">${v} ${s.unit}</b>` : `<b style="color:var(--accent)">Add</b>`}</button>`; }).join("")}</div>
+  <button class="link" data-a="go" data-v="guide">${icon("tape", 18)}How to measure yourself</button></div>
+  <div class="card"><h2>Body shape and fit notes</h2><p class="body2">${shape ? `Body shape: ${shape}` : "Add bust, waist and hips to see your body shape"}${hc ? ` · height: ${hc}${m.heightCm ? ` (${m.heightCm} cm)` : ""}` : ""}</p>
+  <div class="row wrap" style="gap:8px">${d.notes.map((n, i) => `<button class="pill neutral" style="min-height:36px" data-a="delNote" data-i="${i}" aria-label="${esc(n)}. Remove">${esc(n)} ×</button>`).join("")}</div>
+  <div class="field"><input id="noteAdd" placeholder="Add a note, e.g. “Short torso”" data-bind="newNote" autocomplete="off"><button class="link" data-a="addNote">Add</button></div></div>
+  <button class="card" style="border:0;text-align:left;color:var(--ink)" data-a="go" data-v="${d.colorType ? "colorguide" : "selfie"}"><div class="row between"><h2>${d.colorType ? `Color type: ${esc(d.colorType.season)}` : "Color type"}</h2><span style="color:var(--accent);font-weight:800;font-size:14px">${d.colorType ? "Color guide" : "Take selfie"}</span></div>
+  ${d.colorType ? `<div class="row" style="gap:6px">${d.colorType.best.slice(0, 8).map((c) => `<span style="flex:1;height:28px;border-radius:6px;background:${c.hex}"></span>`).join("")}</div>` : `<p class="small">A selfie in daylight finds the colors that suit you.</p>`}</button>
+  ${d.colorType ? `<button class="link" data-a="go" data-v="colortype">See full palette or retake selfie</button>` : ""}
+  <div class="card"><h2>Fit history</h2>${d.fits.length ? d.fits.map((f) => `<div style="border-top:1px solid var(--line);padding-top:10px"><b>${esc(f.brand)} · ${esc(f.item)} · ${esc(f.size)}</b><p class="small">${Object.entries(f.zones).map(([z, v]) => `${z} ${v === "right" ? "fine" : v}`).join(", ")}. ${f.kept ? "Kept it." : "Returned."} ${esc(f.note)}</p></div>`).join("") : `<p class="small">After you buy something, tell us how it fit — advice for that brand gets sharper.</p>`}</div>
+  ${S.caps.downloads ? `<button class="link" data-a="export">Export my data</button>` : ""}
+  ${S.ui.confirm === "all" ? `<div class="confirm"><b>Delete profile and all data?</b><p class="small">Measurements, color type, checks, looks and wardrobe will be removed. This can’t be undone.</p><div class="grid2"><button class="btn secondary" data-a="cancelConfirm">Cancel</button><button class="btn" style="background:var(--bad);color:var(--surface)" data-a="deleteAll">Delete everything</button></div></div>` : `<button class="link danger" data-a="askConfirm" data-val="all">Delete my profile and all data</button>`}
+  ${S.ui.saveError ? `<div class="notice bad">${esc(S.ui.saveError)}</div>` : ""}
+  <p class="tiny">${S.caps.db && S.caps.uid ? "Saved privately to your Claude account." : "Saved in this browser only."}</p>`;
+};
+
+/* ===================== On-device color picking ===================== */
+/* The photo never leaves the phone: pixels are read from a canvas where the user taps. */
+
+const PICK_STEPS = [
+  { k: "white", t: "Tap something white", d: "Your white top or a white wall. This corrects the color of the light. No white in the photo? Skip this step.", optional: true },
+  { k: "skin", t: "Tap your cheek", d: "A clear patch of skin in good light, not in shadow and not shiny." },
+  { k: "hair", t: "Tap your hair", d: "An area with your typical hair color, not a shiny highlight." },
+  { k: "eyes", t: "Tap the colored part of your eye", d: "Zoom in on the photo first if you can. Too small to tap? Choose your eye color below.", choices: ["Blue or grey", "Green or hazel", "Light brown", "Dark brown or black"] },
+];
+
+function loadPickImage(url, done) {
+  const img = new Image();
+  img.onload = () => {
+    const scale = Math.min(1, 1000 / Math.max(img.naturalWidth, img.naturalHeight));
+    const c = document.createElement("canvas");
+    c.width = Math.max(1, Math.round(img.naturalWidth * scale));
+    c.height = Math.max(1, Math.round(img.naturalHeight * scale));
+    c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+    S.mem.pickBase = c;
+    done();
+  };
+  img.onerror = () => { S.ui.homeErr = "That photo couldn’t be opened. Try a JPG or PNG."; render(); };
+  img.src = url;
+}
+
+function sampleAt(x, y) {
+  const base = S.mem.pickBase;
+  const r = Math.max(2, Math.round(base.width / 160));
+  const x0 = Math.max(0, Math.round(x) - r), y0 = Math.max(0, Math.round(y) - r);
+  const w = Math.min(base.width - x0, r * 2 + 1), h = Math.min(base.height - y0, r * 2 + 1);
+  const d = base.getContext("2d").getImageData(x0, y0, w, h).data;
+  let R = 0, G = 0, B = 0, n = 0;
+  for (let i = 0; i < d.length; i += 4) { R += d[i]; G += d[i + 1]; B += d[i + 2]; n++; }
+  return [R / n, G / n, B / n];
+}
+const toHex = (c) => "#" + c.map((v) => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, "0")).join("").toUpperCase();
+function balance(c, white) {
+  if (!white) return c;
+  const avg = (white[0] + white[1] + white[2]) / 3;
+  return c.map((v, i) => v * Math.min(1.6, Math.max(0.6, avg / Math.max(1, white[i]))));
+}
+
+function drawPickCanvas(marks) {
+  const cv = $("#pickCanvas"), base = S.mem.pickBase;
+  if (!cv || !base) return;
+  cv.width = base.width; cv.height = base.height;
+  const ctx = cv.getContext("2d");
+  ctx.drawImage(base, 0, 0);
+  const rad = Math.max(8, base.width / 45);
+  for (const m of marks) {
+    ctx.beginPath(); ctx.arc(m.x, m.y, rad, 0, Math.PI * 2);
+    ctx.lineWidth = Math.max(3, rad / 3); ctx.strokeStyle = "#FFFFFF"; ctx.stroke();
+    ctx.beginPath(); ctx.arc(m.x, m.y, rad + ctx.lineWidth / 2, 0, Math.PI * 2);
+    ctx.lineWidth = 1.5; ctx.strokeStyle = "#18171C"; ctx.stroke();
+  }
+}
+
+V.selfiePick = () => {
+  const sp = S.ui.sp, st = PICK_STEPS[sp.step];
+  const picked = sp.picks[st.k] || (st.k === "eyes" && sp.choice);
+  const last = sp.step === PICK_STEPS.length - 1;
+  return `${topbar(`Step ${sp.step + 1} of ${PICK_STEPS.length} · your colors`)}
+  <h1>${esc(st.t)}</h1><p class="body2">${esc(st.d)}</p>
+  <canvas id="pickCanvas" role="img" aria-label="Your selfie. Tap to choose a color." style="width:100%;height:auto;border-radius:16px;touch-action:manipulation;cursor:crosshair"></canvas>
+  ${st.choices ? `<div class="row wrap" style="gap:8px">${st.choices.map((c) => `<button class="chip" aria-pressed="${sp.choice === c}" data-a="spChoice" data-val="${esc(c)}">${esc(c)}</button>`).join("")}</div>` : ""}
+  <div class="row wrap" style="gap:8px">${PICK_STEPS.filter((s) => sp.picks[s.k]).map((s) => `<span class="pill neutral"><span style="width:16px;height:16px;border-radius:8px;border:1px solid var(--line);background:${sp.picks[s.k]}"></span>${esc({ white: "White", skin: "Skin", hair: "Hair", eyes: "Eyes" }[s.k])}</span>`).join("")}</div>
+  <button class="btn" data-a="spNext" ${picked || st.optional ? "" : "disabled"}>${picked ? (last ? "Find my color type" : "Next") : st.optional ? "Skip this step" : "Tap the photo first"}</button>
+  <button class="btn secondary" data-a="spPrev">Back</button>
+  <p class="tiny" style="text-align:center">Your photo stays on your phone. Only the colors you tap are used.</p>`;
+};
+
+V.colorPick = () => `${topbar("Item color")}
+  <h1>Tap the item</h1><p class="body2">Tap a spot in normal light — not a shadow or a shiny highlight.</p>
+  <canvas id="pickCanvas" role="img" aria-label="Your photo of the item. Tap to choose its color." style="width:100%;height:auto;border-radius:16px;touch-action:manipulation;cursor:crosshair"></canvas>
+  ${S.ui.cp ? `<div class="row"><span style="width:44px;height:44px;border-radius:12px;border:1px solid var(--line);background:${S.ui.cp}"></span><span class="small">Picked color ${S.ui.cp}</span></div>` : ""}
+  <button class="btn" data-a="cpUse" ${S.ui.cp ? "" : "disabled"}>${S.ui.cp ? "Use this color" : "Tap the photo first"}</button>
+  <p class="tiny" style="text-align:center">The photo stays on your phone.</p>`;
+
+/* ===================== Shop photo try-on (on device only) ===================== */
+
+function garmentFor(id) {
+  if (!id) return null;
+  if (S.mem.garments && S.mem.garments[id] !== undefined) return S.mem.garments[id];
+  S.mem.garments = S.mem.garments || {};
+  let g = null;
+  try { const raw = localStorage.getItem("wifm-g-" + id); if (raw) g = JSON.parse(raw); } catch (e) { g = null; }
+  if (g && g.url && !g.fit) { measureSaved(id, g); g = null; } // older photo: measure its outline first, then redraw
+  S.mem.garments[id] = g && g.url ? g : null;
+  return S.mem.garments[id];
+}
+
+// Measures the garment outline of a cut-out (trims empty margins) -> {url, w, h, fit}.
+function measureCanvas(cv) {
+  const ctx = cv.getContext("2d"), d = ctx.getImageData(0, 0, cv.width, cv.height).data;
+  const fit = gfMeasure(d, cv.width, cv.height);
+  if (!fit) return null;
+  const b = fit.box, out = document.createElement("canvas");
+  out.width = b.w; out.height = b.h;
+  out.getContext("2d").drawImage(cv, b.x, b.y, b.w, b.h, 0, 0, b.w, b.h);
+  return { url: out.toDataURL("image/png"), w: b.w, h: b.h, fit: { box: { w: b.w, h: b.h }, rows: fit.rows } };
+}
+function measureSaved(id, g) {
+  const im = new Image();
+  im.onload = () => {
+    const cv = document.createElement("canvas");
+    cv.width = im.naturalWidth; cv.height = im.naturalHeight;
+    cv.getContext("2d").drawImage(im, 0, 0);
+    const m = measureCanvas(cv);
+    if (!m) return;
+    S.mem.garments[id] = m;
+    try { localStorage.setItem("wifm-g-" + id, JSON.stringify(m)); } catch (e) { /* kept for this visit */ }
+    render();
+  };
+  im.src = g.url;
+}
+
+function garIsBottom(id) {
+  const c = S.data.checks.find((x) => x.id === id);
+  return !!(c && c.result && catToSlot(c.result.item.category) === "bottom");
+}
+
+V.garment = () => {
+  const G = S.ui.gar;
+  return `${topbar("Shop photo")}
+  <h1>Mark the garment</h1>
+  ${garIsBottom(G.target)
+    ? `<p class="body2">Drag a box over the garment: from hip to hip, and from the waistband down to the hem. Leave out the top and the shoes.</p>`
+    : `<p class="body2">Drag a box over the garment: from shoulder to shoulder, and from the collar down to the hem. Leave out the head and the shoes.</p>`}
+  <canvas id="garCanvas" role="img" aria-label="The shop photo. Drag to mark the garment." style="width:100%;height:auto;border-radius:16px;touch-action:none;cursor:crosshair"></canvas>
+  <div class="row" style="gap:8px;flex-wrap:wrap"><button class="chip" aria-pressed="${G.bg}" data-a="garBg">Remove plain background</button><button class="chip" data-a="garAll">Use the whole photo</button></div>
+  ${G.rect ? `<div class="stage"><p class="tiny">Preview</p><canvas id="garPreview" style="max-width:60%;height:auto;background:repeating-conic-gradient(var(--line) 0% 25%, var(--surface) 0% 50%) 50% / 16px 16px;border-radius:10px"></canvas></div>` : ""}
+  <button class="btn" data-a="garSave" ${G.rect ? "" : "disabled"}>${G.rect ? "Put it on my avatar" : "Mark the garment first"}</button>
+  <button class="btn secondary" data-a="back">Cancel</button>
+  <p class="tiny" style="text-align:center">Works best on product photos with a plain background. The photo stays on your phone.</p>`;
+};
+
+function drawGar() {
+  const cv = $("#garCanvas"), base = S.mem.garBase, G = S.ui.gar;
+  if (!cv || !base) return;
+  cv.width = base.width; cv.height = base.height;
+  const ctx = cv.getContext("2d");
+  ctx.drawImage(base, 0, 0);
+  if (G.rect) {
+    const r = G.rect;
+    ctx.fillStyle = "rgba(0,0,0,0.45)";
+    ctx.fillRect(0, 0, cv.width, r.y); ctx.fillRect(0, r.y + r.h, cv.width, cv.height - r.y - r.h);
+    ctx.fillRect(0, r.y, r.x, r.h); ctx.fillRect(r.x + r.w, r.y, cv.width - r.x - r.w, r.h);
+    ctx.lineWidth = Math.max(2, cv.width / 200); ctx.strokeStyle = "#FFFFFF"; ctx.strokeRect(r.x, r.y, r.w, r.h);
+  }
+}
+
+function makeCutout() {
+  const base = S.mem.garBase, G = S.ui.gar, r = G.rect;
+  const scale = Math.min(1, 360 / r.w);
+  const out = document.createElement("canvas");
+  out.width = Math.max(1, Math.round(r.w * scale)); out.height = Math.max(1, Math.round(r.h * scale));
+  const ctx = out.getContext("2d");
+  ctx.drawImage(base, r.x, r.y, r.w, r.h, 0, 0, out.width, out.height);
+  if (G.bg) {
+    const W = out.width, H = out.height, img = ctx.getImageData(0, 0, W, H), d = img.data;
+    // Reference = average of the box's border pixels (the studio backdrop).
+    let R = 0, Gg = 0, B = 0, n = 0;
+    const border = [];
+    for (let x = 0; x < W; x++) border.push(x, (H - 1) * W + x);
+    for (let y = 0; y < H; y++) border.push(y * W, y * W + W - 1);
+    for (const p of border) { R += d[p * 4]; Gg += d[p * 4 + 1]; B += d[p * 4 + 2]; n++; }
+    R /= n; Gg /= n; B /= n;
+    const tol = 42 * 42, seen = new Uint8Array(W * H), q = [];
+    const near = (p) => { const dr = d[p * 4] - R, dg = d[p * 4 + 1] - Gg, db = d[p * 4 + 2] - B; return dr * dr + dg * dg + db * db < tol; };
+    for (const p of border) if (!seen[p] && near(p)) { seen[p] = 1; q.push(p); }
+    while (q.length) {
+      const p = q.pop(), x = p % W, y = (p - x) / W;
+      d[p * 4 + 3] = 0;
+      const nb = [x > 0 ? p - 1 : -1, x < W - 1 ? p + 1 : -1, y > 0 ? p - W : -1, y < H - 1 ? p + W : -1];
+      for (const k of nb) if (k >= 0 && !seen[k] && near(k)) { seen[k] = 1; q.push(k); }
+    }
+    ctx.putImageData(img, 0, 0);
+  }
+  return measureCanvas(out) || { url: out.toDataURL("image/png"), w: out.width, h: out.height, fit: { box: { w: out.width, h: out.height }, rows: Array.from({ length: GF_ROWS }, () => [0, 1]) } };
+}
+
+function wireGarCanvas() {
+  const cv = $("#garCanvas");
+  if (!cv) return;
+  let start = null;
+  const pt = (e) => { const r = cv.getBoundingClientRect(); return { x: ((e.clientX - r.left) / r.width) * cv.width, y: ((e.clientY - r.top) / r.height) * cv.height }; };
+  cv.onpointerdown = (e) => { start = pt(e); try { cv.setPointerCapture(e.pointerId); } catch (x) { /* ok */ } };
+  cv.onpointermove = (e) => {
+    if (!start) return;
+    const p = pt(e);
+    S.ui.gar.rect = { x: Math.max(0, Math.min(start.x, p.x)), y: Math.max(0, Math.min(start.y, p.y)), w: Math.abs(p.x - start.x), h: Math.abs(p.y - start.y) };
+    drawGar();
+  };
+  cv.onpointerup = () => {
+    start = null;
+    const r = S.ui.gar.rect;
+    if (r && (r.w < 12 || r.h < 12)) S.ui.gar.rect = null;
+    render();
+  };
+}
+
+$("#fileGarment").addEventListener("change", (e) => {
+  const f = e.target.files && e.target.files[0];
+  e.target.value = "";
+  if (!f || S.view !== "check") return;
+  const target = S.params.id, url = URL.createObjectURL(f), img = new Image();
+  img.onload = () => {
+    const scale = Math.min(1, 1000 / Math.max(img.naturalWidth, img.naturalHeight));
+    const c = document.createElement("canvas");
+    c.width = Math.max(1, Math.round(img.naturalWidth * scale)); c.height = Math.max(1, Math.round(img.naturalHeight * scale));
+    c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+    URL.revokeObjectURL(url);
+    S.mem.garBase = c; S.ui.gar = { target, rect: null, bg: true }; S.ui.garErr = null;
+    go("garment", { id: target });
+  };
+  img.onerror = () => { URL.revokeObjectURL(url); S.ui.garErr = "This photo couldn't be opened. Take a screenshot of the product photo and choose the screenshot instead."; render(); };
+  img.src = url;
+});
+
+function afterRender(view) {
+  if (view === "garment") {
+    drawGar(); wireGarCanvas();
+    const pv = $("#garPreview");
+    if (pv && S.ui.gar.rect) {
+      const g = makeCutout(), im = new Image();
+      im.onload = () => { pv.width = g.w; pv.height = g.h; pv.getContext("2d").drawImage(im, 0, 0); };
+      im.src = g.url; S.ui.gar.cut = g;
+    }
+  }
+  if (view === "selfiePick") drawPickCanvas(Object.values(S.ui.sp.marks));
+  if (view === "colorPick") drawPickCanvas(S.ui.cpMark ? [S.ui.cpMark] : []);
+}
+
+document.addEventListener("click", (e) => {
+  const cv = e.target.closest && e.target.closest("#pickCanvas");
+  if (!cv || !S.mem.pickBase) return;
+  const r = cv.getBoundingClientRect();
+  const x = ((e.clientX - r.left) / r.width) * cv.width, y = ((e.clientY - r.top) / r.height) * cv.height;
+  const raw = sampleAt(x, y);
+  if (S.view === "selfiePick") {
+    const sp = S.ui.sp, k = PICK_STEPS[sp.step].k;
+    sp.raw = sp.raw || {}; sp.raw[k] = raw;
+    sp.picks[k] = toHex(k === "white" ? raw : balance(raw, sp.raw.white));
+    sp.marks[k] = { x, y };
+    if (k === "eyes") sp.choice = null;
+    render();
+  } else if (S.view === "colorPick") {
+    S.ui.cp = toHex(raw); S.ui.cpMark = { x, y };
+    render();
+  }
+});
+
+function finishPicks() {
+  const sp = S.ui.sp, wb = !!(sp.raw && sp.raw.white);
+  const lines = [
+    `Skin (cheek): ${sp.picks.skin}`,
+    `Hair: ${sp.picks.hair}`,
+    sp.picks.eyes ? `Eyes (iris): ${sp.picks.eyes}` : `Eyes: the user says "${sp.choice}" (not measured)`,
+    wb ? "White balance: corrected using a white reference the user tapped." : "White balance: not corrected (no white reference), so indoor light may add warmth.",
+  ];
+  const measured = { skin: sp.picks.skin, hair: sp.picks.hair, eyes: sp.picks.eyes || null, text: lines.join("\n") };
+  S.mem.selfie = null;
+  go("analyzing", {}, { replace: true });
+  analyseSelfie(null, measured);
+}
+
+/* ===================== Render ===================== */
+
+function render() {
+  const app = $("#app");
+  const view = V[S.view] ? S.view : "home";
+  app.innerHTML = V[view]();
+  afterRender(view);
+  const tabs = TAB_VIEWS.includes(view) && S.data.onboarded;
+  app.classList.toggle("no-tabs", !tabs);
+  $("#tabs").hidden = !tabs;
+  if (tabs) {
+    $("#tabsIn").innerHTML = [["home", "search", "Check"], ["wishlist", "heart", "Wishlist"], ["looks", "hanger", "Looks"], ["profile", "user", "Profile"]]
+      .map(([v, i, l]) => `<button data-a="tab" data-v="${v}" ${v === view ? 'aria-current="page"' : ""}>${icon(i)}${l}</button>`).join("");
+  }
+}
+
+/* ===================== Actions ===================== */
+
+const A = {
+  back: () => back(),
+  go: (d) => {
+    const p = {}; if (d.id) p.id = d.id; if (d.look) p.lookId = d.look;
+    if (d.v === "outfit") S.ui.outfit = null;
+    if (d.v === "tryon" && d.look) S.ui.tryBase = false;
+    if (d.v === "fit") S.ui.fit = null;
+    go(d.v, p);
+  },
+  tab: (d) => go(d.v),
+  startOnboarding: () => { S.ui.step = 0; S.ui.mval = null; S.ui.mErr = null; go("onboarding"); },
+  finish: () => { S.data.onboarded = true; save(); go("home"); },
+  mSkip: () => mAdvance(true),
+  mNext: () => mAdvance(false),
+  mPrev: () => { S.ui.step = Math.max(0, (S.ui.step || 0) - 1); S.ui.mval = null; S.ui.mErr = null; render(); },
+  editAll: () => { S.ui.step = 0; S.ui.mval = null; S.ui.mErr = null; go("onboarding"); },
+  editOne: (d) => { S.ui.step = 0; S.ui.mval = null; S.ui.mErr = null; go("onboarding", { only: d.k }); },
+  pick: (d) => { const el = document.getElementById(d.input); if (el) { el.value = ""; el.click(); } },
+  skipColor: () => { S.data.onboarded = true; save(); go("home"); },
+  quizPick: (d) => { S.ui.quiz[d.k] = d.val; render(); },
+  quizGo: () => {
+    if (S.mem.selfieUrl) { URL.revokeObjectURL(S.mem.selfieUrl); S.mem.selfieUrl = null; }
+    go("analyzing");
+    analyseSelfie(Object.assign({}, S.ui.quiz));
+  },
+  useAnyway: () => { if (S.ui.an && S.ui.an.result) { S.data.colorType = S.ui.an.result; S.mem.selfie = null; save(); go("colortype", {}, { replace: true }); } },
+  clearShots: () => { S.mem.shots.forEach((s) => URL.revokeObjectURL(s.url)); S.mem.shots = []; render(); },
+  startCheck: () => {
+    if (!hasMinimum(S.data.m)) { S.ui.homeErr = "Add your height, bust, waist and hips first — every check needs them."; render(); return; }
+    const F = S.ui.form || {};
+    const details = (F.details || "").trim().slice(0, 6000), chart = (F.chart || "").trim().slice(0, 6000);
+    const link = ((F.link || "").match(/https?:\/\/\S+/) || [])[0] || null;
+    if (!details && !chart && !S.mem.shots.length) {
+      if (link) { S.ui.linkOnly = link; S.ui.homeErr = null; render(); return; }
+      S.ui.homeErr = "Paste the product details or the size chart first."; render(); return;
+    }
+    S.ui.linkOnly = null; S.ui.copied = false;
+    const id = uid();
+    S.mem.files[id] = S.mem.shots.map((s) => s.file);
+    const note = (details.split("\n").find((l) => l.trim()) || chart.split("\n")[0] || link || "Item check").slice(0, 60);
+    S.data.checks.unshift({ id, createdAt: Date.now(), status: "pending", note, link, wished: false, input: { link, details, chart, colorHex: F.colorHex || null, colorName: F.colorName || null } });
+    S.data.checks = S.data.checks.slice(0, 40);
+    S.mem.shots = []; S.ui.form = null; S.ui.homeErr = null;
+    go("check", { id });
+    runCheck(id);
+  },
+  openCheck: (d) => go("check", { id: d.id }),
+  retry: (d) => runCheck(d.id),
+  copyLinkMsg: () => {
+    const t = ($("#linkMsg") || {}).textContent || "";
+    const done = () => { S.ui.copied = true; render(); };
+    try {
+      navigator.clipboard.writeText(t).then(done, () => { const r = document.createRange(); r.selectNodeContents($("#linkMsg")); const s = getSelection(); s.removeAllRanges(); s.addRange(r); });
+    } catch (e) { /* select fallback below */ }
+  },
+  inboxCheck: (d) => {
+    const it = arr(S.inbox).find((x) => x.id === d.id);
+    if (!it) return;
+    S.ui.form = { link: it.link || "", details: [it.name, it.store, it.price, it.details].filter(Boolean).join("\n"), chart: it.chart || "", colorHex: it.colorHex ? hex(it.colorHex) : null, colorName: it.colorName || null };
+    inboxRemove(it.id);
+    A.startCheck();
+  },
+  inboxDel: (d) => inboxRemove(d.id),
+  garBg: () => { S.ui.gar.bg = !S.ui.gar.bg; render(); },
+  garAll: () => { const b = S.mem.garBase; if (!b) return; S.ui.gar.rect = { x: 0, y: 0, w: b.width, h: b.height }; S.ui.gar.cut = null; render(); },
+  garSave: () => {
+    const G = S.ui.gar;
+    if (!G.rect) return;
+    const g = G.cut || makeCutout();
+    S.mem.garments = S.mem.garments || {};
+    S.mem.garments[G.target] = g;
+    try { localStorage.setItem("wifm-g-" + G.target, JSON.stringify(g)); } catch (e) { /* kept for this visit only */ }
+    S.mem.garBase = null;
+    back();
+  },
+  garRemove: (d) => {
+    S.mem.garments = S.mem.garments || {};
+    S.mem.garments[d.id] = null;
+    try { localStorage.removeItem("wifm-g-" + d.id); } catch (e) { /* ignore */ }
+    render();
+  },
+  fColor: (d) => { const F = S.ui.form; F.colorHex = d.val; F.colorName = d.name; render(); },
+  spTap: () => {},
+  spNext: () => {
+    const sp = S.ui.sp;
+    if (sp.step < PICK_STEPS.length - 1) { sp.step++; render(); return; }
+    finishPicks();
+  },
+  spPrev: () => { if (S.ui.sp.step > 0) { S.ui.sp.step--; render(); } else back(); },
+  spChoice: (d) => { S.ui.sp.choice = d.val; delete S.ui.sp.picks.eyes; render(); },
+  cpUse: () => { const F = S.ui.form || (S.ui.form = {}); F.colorHex = S.ui.cp; F.colorName = "Color from your photo"; back(); },
+  wish: (d) => { const c = S.data.checks.find((x) => x.id === d.id); if (c) { c.wished = !c.wished; save(); render(); } },
+  delCheck: (d) => { S.data.checks = S.data.checks.filter((x) => x.id !== d.id); save(); back(); },
+  fitZone: (d) => { S.ui.fit.zones[d.k] = d.val; render(); },
+  fitKept: (d) => { S.ui.fit.kept = d.val === "1"; render(); },
+  fitSave: () => {
+    const c = S.data.checks.find((x) => x.id === S.params.id), it = c && c.result && c.result.item, f = S.ui.fit;
+    S.data.fits.unshift({ id: uid(), brand: (it && (it.brand || it.store)) || "Unknown brand", item: (it && it.name) || "Item", size: f.size || "?", zones: Object.assign({}, f.zones), kept: f.kept, note: (f.note || "").trim(), createdAt: Date.now() });
+    f.saved = true; save(); render();
+  },
+  occ: (d) => { S.ui.outfit.occasion = d.val; S.ui.outfit.review = null; S.ui.outfit.folder = null; render(); },
+  oView: (d) => { S.ui.outfit.view = d.val; render(); },
+  pickPiece: (d) => {
+    const o = S.ui.outfit, i = Number(d.i);
+    const ac = S.params.id ? S.data.checks.find((c) => c.id === S.params.id) : null;
+    const cand = candidates(ac && ac.id)[d.slot];
+    o.picked[d.slot] = i < 0 ? undefined : cand[i];
+    if (d.slot === "dress" && i >= 0) { o.picked.top = undefined; o.picked.bottom = undefined; }
+    o.review = null; o.saved = null; render();
+  },
+  reviewLook: async () => {
+    const o = S.ui.outfit;
+    if (!S.caps.sample) { o.error = "AI isn’t available in this view."; render(); return; }
+    o.reviewing = true; o.error = null; render();
+    try {
+      const r = await S.caps.sample.json(LOOK_PROMPT({ occasion: o.occasion, pieces: S.ui.outfitPieces.map((p) => ({ slot: p.slot, name: p.name, colorHex: p.colorHex })), profile: profileForAI() }), { modelTier: "default" });
+      o.review = { checks: arr(r && r.checks).map((x) => ({ title: String(x.title || ""), ok: x.ok !== false, text: String(x.text || "") })), tip: String((r && r.tip) || "") };
+    } catch (e) { o.error = aiError(e); }
+    o.reviewing = false; if (S.view === "outfit") render();
+  },
+  startSave: () => { S.ui.outfit.picking = true; render(); },
+  oFolder: (d) => { S.ui.outfit.folder = d.val; render(); },
+  saveLook: () => {
+    const o = S.ui.outfit, pieces = S.ui.outfitPieces || [];
+    const folder = o.folder || FOLDER_FOR[o.occasion] || S.data.folders[0];
+    const anchor = pieces[0];
+    S.data.looks.unshift({ id: uid(), name: anchor && S.params.id ? anchor.name : `${o.occasion} look`, folder, occasion: o.occasion, pieces: pieces.map((p) => ({ slot: p.slot, name: p.name, colorHex: hex(p.colorHex), length: p.length || "", modelH: p.modelH || null, ref: p.ref || null, source: p.source })), review: o.review || null, createdAt: Date.now() });
+    o.saved = folder; o.picking = false; save(); render();
+  },
+  tryBase: (d) => { S.ui.tryBase = d.val === "1"; render(); },
+  askConfirm: (d) => { S.ui.confirm = d.val; render(); },
+  cancelConfirm: () => { S.ui.confirm = null; render(); },
+  delLook: (d) => { S.data.looks = S.data.looks.filter((l) => l.id !== d.id); save(); back(); },
+  lFolder: (d) => { S.ui.looks.active = d.val; S.ui.looks.moving = null; render(); },
+  lNew: () => { S.ui.looks.creating = true; S.ui.looks.err = null; render(); const el = $("#folderName"); if (el) el.focus(); },
+  lCancel: () => { S.ui.looks.creating = false; render(); },
+  lCreate: () => {
+    const L = S.ui.looks, n = (L.name || "").trim();
+    if (!n || S.data.folders.some((f) => f.toLowerCase() === n.toLowerCase())) { L.err = "Enter a new folder name that isn’t used yet."; render(); return; }
+    S.data.folders.push(n.slice(0, 40)); L.active = n.slice(0, 40); L.creating = false; L.name = ""; save(); render();
+  },
+  lMove: (d) => { S.ui.looks.moving = S.ui.looks.moving === d.id ? null : d.id; render(); },
+  lMoveTo: (d) => { const l = S.data.looks.find((x) => x.id === d.id); if (l) l.folder = d.val; S.ui.looks.moving = null; save(); render(); },
+  wSlot: (d) => { S.ui.ward.slot = d.val; render(); },
+  wColor: (d) => { S.ui.ward.hex = d.val; render(); },
+  wAdd: () => {
+    const W = S.ui.ward;
+    if (!(W.name || "").trim()) { W.err = "Give the item a short name, e.g. “Camel trench”."; render(); return; }
+    S.data.wardrobe.unshift({ id: uid(), name: W.name.trim().slice(0, 60), slot: W.slot, colorHex: W.hex });
+    W.name = ""; W.err = null; save(); render();
+  },
+  wDel: (d) => { S.data.wardrobe = S.data.wardrobe.filter((w) => w.id !== d.id); save(); render(); },
+  addNote: () => { const n = (S.ui.newNote || "").trim(); if (n) { S.data.notes.push(n.slice(0, 80)); S.ui.newNote = ""; save(); render(); } },
+  delNote: (d) => { S.data.notes.splice(Number(d.i), 1); save(); render(); },
+  export: async () => {
+    try { await S.caps.downloads.save({ filename: "will-it-fit-me-data.json", data: JSON.stringify(S.data, null, 2) }); } catch (e) { /* viewer declined */ }
+  },
+  deleteAll: () => { S.data = DEFAULT_DATA(); S.mem = { files: {}, shots: [], selfie: null, selfieUrl: null }; S.ui = {}; persist(); S.history = []; go("welcome", {}, { replace: true }); },
+};
+
+function inboxRemove(id) {
+  S.inbox = arr(S.inbox).filter((x) => x.id !== id);
+  if (S.caps.db && S.caps.uid) S.caps.db.doc("data/users/" + S.caps.uid + "/inbox").collection("items").doc(id).delete().catch(() => {});
+  render();
+}
+
+function mAdvance(skip) {
+  const only = S.params.only;
+  const steps = only ? MEASURES.filter((s) => s.key === only) : MEASURES;
+  const i = Math.min(S.ui.step || 0, steps.length - 1), st = steps[i];
+  if (!skip) {
+    const raw = String(S.ui.mval != null ? S.ui.mval : S.data.m[st.key] ?? "").trim().replace(",", ".");
+    if (!raw) {
+      if (st.req) { S.ui.mErr = `${st.title} is needed for every check.`; render(); return; }
+      delete S.data.m[st.key];
+    } else {
+      const n = Number(raw);
+      if (!isFinite(n) || n < st.min || n > st.max) { S.ui.mErr = `That looks unusual for ${st.title.toLowerCase()} — expected ${st.min}–${st.max} ${st.unit}. Check and try again.`; render(); return; }
+      S.data.m[st.key] = Math.round(n * 10) / 10;
+    }
+    save();
+  }
+  S.ui.mval = null; S.ui.mErr = null;
+  if (i + 1 >= steps.length) { if (only) back(); else go("selfie"); }
+  else { S.ui.step = i + 1; render(); const el = $("#mInput"); if (el) el.focus(); }
+}
+
+document.addEventListener("click", (e) => {
+  const el = e.target.closest("[data-a]");
+  if (!el || el.disabled) return;
+  const fn = A[el.dataset.a];
+  if (fn) { e.preventDefault(); fn(el.dataset, el); }
+});
+document.addEventListener("input", (e) => {
+  const path = e.target.dataset && e.target.dataset.bind;
+  if (!path) return;
+  const parts = path.split(".");
+  let o = S.ui;
+  for (let i = 0; i < parts.length - 1; i++) { o[parts[i]] = o[parts[i]] || {}; o = o[parts[i]]; }
+  o[parts[parts.length - 1]] = e.target.value;
+});
+document.addEventListener("keydown", (e) => {
+  if (e.key !== "Enter" || e.target.tagName !== "INPUT") return;
+  if (e.target.id === "mInput") { e.preventDefault(); A.mNext(); }
+  if (e.target.id === "noteAdd") { e.preventDefault(); A.addNote(); }
+  if (e.target.id === "folderName") { e.preventDefault(); A.lCreate(); }
+});
+
+document.addEventListener("keydown", (e) => {
+  const lab = e.target.closest && e.target.closest("label[for][role=button]");
+  if (lab && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); lab.click(); }
+});
+
+function onSelfie(e) {
+  const f = e.target.files && e.target.files[0];
+  e.target.value = "";
+  if (!f) return;
+  if (S.mem.selfieUrl) URL.revokeObjectURL(S.mem.selfieUrl);
+  S.mem.selfie = f; S.mem.selfieUrl = URL.createObjectURL(f);
+  if (S.caps.images) { go("analyzing"); analyseSelfie(); return; }
+  S.ui.sp = { step: 0, picks: {}, marks: {}, choice: null };
+  loadPickImage(S.mem.selfieUrl, () => go("selfiePick"));
+}
+$("#fileColor").addEventListener("change", (e) => {
+  const f = e.target.files && e.target.files[0];
+  e.target.value = "";
+  if (!f) return;
+  if (S.mem.colorUrl) URL.revokeObjectURL(S.mem.colorUrl);
+  S.mem.colorUrl = URL.createObjectURL(f);
+  S.ui.cp = null; S.ui.cpMark = null;
+  loadPickImage(S.mem.colorUrl, () => go("colorPick"));
+});
+$("#fileSelfieCam").addEventListener("change", onSelfie);
+$("#fileSelfie").addEventListener("change", onSelfie);
+$("#fileShots").addEventListener("change", (e) => {
+  const max = S.caps.images ? S.caps.images.maxCount : 4;
+  const files = Array.from(e.target.files || []).filter((f) => /^image\//.test(f.type));
+  e.target.value = "";
+  for (const f of files) { if (S.mem.shots.length >= max) break; S.mem.shots.push({ file: f, url: URL.createObjectURL(f) }); }
+  S.ui.homeErr = files.length && S.mem.shots.length >= max ? `Up to ${max} images per check.` : null;
+  render();
+});
+
+/* ===================== Boot ===================== */
+
+(async function boot() {
+  const c = window.claude;
+  const use = (n) => (c && c.use ? c.use(n).catch(() => null) : Promise.resolve(null));
+  const [sample, db, user, downloads] = await Promise.all([use("sample"), use("db"), use("user"), use("downloads")]);
+  S.caps.sample = sample; S.caps.db = db; S.caps.downloads = downloads;
+  if (user) { try { S.caps.uid = await user.id(); } catch (e) { S.caps.uid = null; } }
+  if (sample) { try { const lim = await sample.limits(); S.caps.images = lim && lim.images ? lim.images : null; } catch (e) { S.caps.images = null; } }
+  await load();
+  if (db && S.caps.uid) {
+    try {
+      db.doc("data/users/" + S.caps.uid + "/inbox").collection("items").onSnapshot((snap) => {
+        S.inbox = snap.docs.filter((x) => x.exists).map((x) => Object.assign({}, x.data(), { id: x.id }));
+        if (S.view === "home") render();
+      }, () => {});
+    } catch (e) { /* inbox unavailable */ }
+  }
+  S.view = "boot";
+  go(S.data.onboarded ? "home" : "welcome", {}, { replace: true });
+})();
+</script>

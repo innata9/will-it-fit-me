@@ -74,3 +74,6 @@ Scan the QR code with **Expo Go** (iOS/Android) on the same Wi-Fi network.
 
 Any Node 20+ host works (Render, Fly.io, Railway, a VPS):
 `npm ci && npm run build && npm start`, with `ANTHROPIC_API_KEY` set. Put it behind HTTPS and point `EXPO_PUBLIC_API_URL` at it.
+
+## web/
+The working app that runs inside Claude (`web/will-it-fit-me.html`). See `web/README.md` — including the rule that shop photos are always fitted to the body.
