@@ -1,0 +1,38 @@
+{
+  "expo": {
+    "name": "Will it fit me?",
+    "slug": "will-it-fit-me",
+    "scheme": "willitfitme",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.willitfitme.app"
+    },
+    "android": {
+      "package": "com.willitfitme.app",
+      "adaptiveIcon": {
+        "backgroundColor": "#F3F4F6",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-image-picker",
+        {
+          "cameraPermission": "Take a selfie to find your color type, or a photo of an item to check it.",
+          "photosPermission": "Choose a screenshot of an item, or a selfie, to analyse."
+        }
+      ]
+    ]
+  }
+}
