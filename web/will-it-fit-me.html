@@ -614,7 +614,15 @@ function gfChartLengthCm(chart, size) {
   if (!head) return null;
   const col = head.findIndex((x) => /total length|length|довжин/i.test(x));
   const num = (s) => { const m = String(s || "").match(/\d+(?:[.,]\d+)?/); return m ? parseFloat(m[0].replace(",", ".")) : null; };
-  const rows = lines.filter((c) => c !== head && c.length > col && num(c[col]) !== null && /^[A-Z0-9]{1,4}$/i.test(c[0]));
+  // Only the rows of THIS table: from its header down to the next blank line or header
+  // (a body chart and a garment chart are often pasted together).
+  const rows = [];
+  for (let i = lines.indexOf(head) + 1; i < lines.length; i++) {
+    const c = lines[i];
+    if (c.length === 1 && !c[0]) break;
+    if (/^(size|розмір|частина)$/i.test(c[0])) break;
+    if (c.length > col && num(c[col]) !== null && /^[A-Z0-9]{1,4}$/i.test(c[0])) rows.push(c);
+  }
   if (!rows.length) return null;
   const want = rows.find((c) => size && c[0].toUpperCase() === String(size).toUpperCase()) || rows[Math.floor(rows.length / 2)];
   const v = num(want[col]);

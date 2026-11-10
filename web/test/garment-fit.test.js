@@ -122,3 +122,9 @@ test("the app has no manual selection step: picking a photo puts it straight on 
   assert.ok(/gfExtract\(/.test(handler) && /measureCanvas\(/.test(handler) && /localStorage\.setItem\("wifm-g-"/.test(handler), "the photo handler must cut out, measure and save automatically");
   assert.ok(!/go\("garment"/.test(html), "no extra screen between choosing the photo and the avatar");
 });
+
+test("length comes from the garment table even when a body table is pasted above it", () => {
+  const chart = "Size | Bust | Waist | Hips\nXS | 80-84 | 62-66 | 90-94\nS | 84-88 | 66-70 | 94-98\n\nSize | Waist flat | Total length\nXS | 33 | 125\nS | 35 | 126";
+  assert.strictEqual(gf.gfChartLengthCm(chart, "S"), 126);
+  assert.strictEqual(gf.gfChartLengthCm(chart, "XS"), 125);
+});
