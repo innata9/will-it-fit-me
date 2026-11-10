@@ -568,7 +568,8 @@ function gfExtract(d, W, H) {
   // highlights, so the fill runs on an ERODED candidate mask: thin bridges of highlight
   // pixels through the fabric are cut, and the fill cannot leak into the garment.
   const cand = new Uint8Array(N);
-  for (let p = 0; p < N; p++) cand[p] = toRef(p) < (2 * T) ** 2 ? 1 : 0;
+  // tight on purpose: white / ivory garments on a light-grey backdrop differ from it by very little
+  for (let p = 0; p < N; p++) cand[p] = toRef(p) < T * T ? 1 : 0;
   const R = Math.max(2, Math.round(Math.min(W, H) / 220));
   const morph = (src, keepIf) => { // separable square min (erode) or max (dilate), radius R
     const tmp = new Uint8Array(N), out = new Uint8Array(N);
@@ -588,7 +589,7 @@ function gfExtract(d, W, H) {
   // Fill every sizeable region of backdrop: the outside, and also closed-off pockets such as
   // the gap between a sleeve and the body (real case: a leather jacket, sleeves held out).
   // Thin highlight streaks on fabric were removed by the erosion, so they never qualify.
-  const fill = new Uint8Array(N), seen = new Uint8Array(N), minPocket = Math.max(40, N * 0.0015);
+  const fill = new Uint8Array(N), seen = new Uint8Array(N), minPocket = Math.max(40, N * 0.006); // a sleeve gap, not a highlight on white fabric
   for (let s0 = 0; s0 < N; s0++) {
     if (!core[s0] || seen[s0]) continue;
     const list = [s0]; seen[s0] = 1;
@@ -598,7 +599,11 @@ function gfExtract(d, W, H) {
       if (x === 0 || y === 0 || x === W - 1 || y === H - 1) touches = true;
       for (const k of [x > 0 ? p - 1 : -1, x < W - 1 ? p + 1 : -1, p - W, p + W]) if (k >= 0 && k < N && core[k] && !seen[k]) { seen[k] = 1; list.push(k); }
     }
-    if (touches || list.length >= minPocket) for (const p of list) fill[p] = 1;
+    // A closed pocket counts only if it IS the backdrop colour (a sleeve gap shows the
+    // backdrop itself); a broad highlight on white satin is close, but not that close.
+    let pocketBg = false;
+    if (!touches && list.length >= minPocket) { let sum = 0; for (const p of list) sum += Math.sqrt(toRef(p)); pocketBg = sum / list.length < Math.max(2.5, 0.25 * T); }
+    if (touches || pocketBg) for (const p of list) fill[p] = 1;
   }
   const grown = morph(fill, false); // dilate back to the garment's edge
   const bg = new Uint8Array(N);

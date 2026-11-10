@@ -251,3 +251,20 @@ test("recent checks are paginated, 20 per page", () => {
   assert.ok(/const CHECKS_PER_PAGE = 20;/.test(html));
   assert.ok(/recentPage\(\)/.test(html) && /data-a="recentGo"/.test(html));
 });
+
+test("an ivory skirt on a light-grey backdrop is kept whole (low contrast)", () => {
+  // Real case: Massimo Dutti white satin slip skirt, fabric (237,236,232) on a (246,246,246) backdrop,
+  // with near-backdrop highlights (243) inside the fabric.
+  const W = 300, H = 400, d = new Uint8ClampedArray(W * H * 4);
+  let seed = 3; const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+  for (let p = 0; p < W * H; p++) { const x = p % W, y = (p / W) | 0, n = Math.round(rnd() * 2);
+    const inG = x > 60 && x < 240 && y > 40 && y < 370;
+    const hi = inG && x > 150 && x < 175 && y > 60 && y < 200; // a long highlight fold
+    const c = inG ? (hi ? [243, 243, 242] : [237 - n, 236 - n, 232 - n]) : [246 - n, 246 - n, 246 - n];
+    d.set([...c, 255], p * 4); }
+  assert.ok(gf.gfExtract(d, W, H));
+  let holes = 0, total = 0;
+  for (let y = 50; y < 360; y += 2) for (let x = 70; x < 230; x += 2) { total++; if (!d[(y * W + x) * 4 + 3]) holes++; }
+  assert.ok(holes / total < 0.01, `ivory fabric must stay whole, ${(100 * holes / total).toFixed(1)}% removed`);
+  assert.strictEqual(d[(5 * W + 5) * 4 + 3], 0, "backdrop removed");
+});
