@@ -20,6 +20,17 @@ All photo try-on goes through `fitPhoto()` → `gfPlan()` / `gfSVG()` (the code 
    (shoulders, bust, waist, hips, thighs, calves from the profile): the photographed shape at true scale, widened where the body is wider, never narrower than the body where it must cover it (bust down; everywhere for bottoms). Necklines, halters and straps keep their own shape.
 3. Length comes from the size chart's total length for the recommended size, converted by the user's height; without a chart, from the photo re-scaled from the model's height.
 
+## Rule: length is where the hem lands above the floor
+
+Never estimate length as "the model's hem moved by some % of the height difference".
+A garment's total length starts at a point on the body (`GF_START`: shoulder, bodice top for
+strappy / halter / strapless dresses, or the waistband for bottoms) whose height is a fixed share
+of the wearer's height. The hem sits at `start height − length` above the floor, for the user and
+the model alike. The verdict gets these numbers per size (`computedLength`), the avatar draws the
+hem there, and the size she actually bought (fit feedback) is used when known.
+Real case behind this rule: Le Privé "Roseline" XS, 125 cm, on a 158 cm customer — the old rule
+said ~5 cm longer than on the model; in reality it lay ~11 cm on the floor.
+
 Before publishing, run:
 
 ```

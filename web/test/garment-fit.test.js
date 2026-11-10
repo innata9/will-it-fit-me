@@ -128,3 +128,42 @@ test("length comes from the garment table even when a body table is pasted above
   assert.strictEqual(gf.gfChartLengthCm(chart, "S"), 126);
   assert.strictEqual(gf.gfChartLengthCm(chart, "XS"), 125);
 });
+
+// ---------- Length: where the hem really lands, from the floor ----------
+// Real case: Le Privé "Roseline" maxi, XS = 125 cm, thin straps. On a 158 cm customer it was
+// too long; the old rule ("hem moves 0.47 cm per cm of height difference") said ~5 cm.
+
+test("strappy maxi: length is measured from the bodice, hem lies on the floor for a 158 cm woman", () => {
+  const start = gf.gfStartPoint("upper", "Thin straps, ruched neckline with tie detail, maxi length");
+  assert.strictEqual(start, "bodice");
+  const hem = gf.gfHemCm(125, 158, start);
+  assert.ok(hem < -8, `125 cm from the bodice must lie well on the floor for 158 cm, got ${hem}`);
+  assert.match(gf.gfHemWords(hem), /on the floor/);
+  assert.ok(gf.gfHemCm(125, 168, start) > hem + 6, "on the 168 cm model it sits ~7 cm higher");
+});
+
+test("sleeved garments are measured from the shoulder; bottoms from the waistband", () => {
+  assert.strictEqual(gf.gfStartPoint("upper", "Long wool coat with lapels"), "shoulder");
+  assert.strictEqual(gf.gfStartPoint("bottom", "", "high"), "high");
+  assert.ok(Math.abs(gf.gfHemCm(100, 165, "mid") - (0.58 * 165 - 100)) < 0.11);
+});
+
+test("the avatar draws the hem at its real height above the floor", () => {
+  const W = 40, H = 300, d = new Uint8ClampedArray(W * H * 4);
+  for (let i = 3; i < d.length; i += 4) d[i] = 255;
+  const fit = gf.gfMeasure(d, W, H);
+  const B = makeBody({ heightCm: 158, bustCm: 81, waistCm: 69, hipsCm: 99 });
+  const onFloor = gf.gfPlan(fit, "upper", { ...B, lengthCm: 125, start: "bodice" });
+  assert.ok(Math.abs(onFloor.y0 + onFloor.gh - 397) < 1.5, "a dress longer than the body reaches the floor on the avatar");
+  const midi = gf.gfPlan(fit, "upper", { ...B, lengthCm: 95, start: "shoulder" });
+  const expectHemY = 397 - gf.gfHemCm(95, 158, "shoulder") * (383 / 158);
+  assert.ok(Math.abs(midi.y0 + midi.gh - expectHemY) < 0.5, "midi hem at its real height");
+});
+
+test("length facts give the hem for every size, and the app no longer uses the old % rule", () => {
+  const f = gf.gfLengthFacts("Size | Waist flat | Total length\nXS | 33 | 125\nS | 35 | 126", "upper", "thin straps", "mid", 158, 168);
+  assert.deepStrictEqual(f.bySize.map((r) => r.size), ["XS", "S"]);
+  assert.ok(f.bySize[0].hemAboveFloorCmOnUser < -8);
+  assert.ok(!/lengthShift|\* 0\.47/.test(html), "the old model-height % rule is back");
+  assert.ok(/computedLength: lengthFacts/.test(html), "the verdict must get the real hem facts");
+});

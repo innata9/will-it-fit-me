@@ -7,9 +7,10 @@
  *    this body is wider than average, and never narrower than the body where it
  *    must cover it (bust down for tops/dresses/coats, everywhere for bottoms).
  *    Necklines, halters and straps above the bust keep their own shape.
- * 3. Length: the chart's "total length" in cm when known (cm -> avatar units by
- *    the user's height); otherwise the photo's proportions re-scaled from the
- *    model's height to the user's.
+ * 3. Length: the chart's "total length" in cm when known. The hem is placed at its REAL
+ *    height above the floor: start point height (shoulder / bodice / waist, as a share of
+ *    the user's height, GF_START) minus the length. Otherwise the photo's proportions
+ *    re-scaled from the model's height to the user's.
  * 4. Getting the garment out of a shop photo is AUTOMATIC (gfExtract): the user only
  *    picks the photo. No box to draw, no manual selection step - ever.
  * Avatar frame: x centre 100; head top y=14, soles y=397 -> 383 units = user's height.
@@ -123,12 +124,12 @@ function gfExtract(d, W, H) {
   return { kept: best.length / N };
 }
 
-// Pull "total length" (cm) for a size out of a pasted size-chart text.
-function gfChartLengthCm(chart, size) {
-  if (!chart) return null;
+// All "total length" values (cm) of a pasted size chart: [{ size, lengthCm }].
+function gfChartLengths(chart) {
+  if (!chart) return [];
   const lines = String(chart).split(/\n/).map((l) => l.split(/\s*\|\s*|\t+/).map((c) => c.trim()));
   const head = lines.find((c) => c.some((x) => /length|довжин/i.test(x)) && c.some((x) => /size|розмір|частина/i.test(x)));
-  if (!head) return null;
+  if (!head) return [];
   const col = head.findIndex((x) => /total length|length|довжин/i.test(x));
   const num = (s) => { const m = String(s || "").match(/\d+(?:[.,]\d+)?/); return m ? parseFloat(m[0].replace(",", ".")) : null; };
   // Only the rows of THIS table: from its header down to the next blank line or header
@@ -138,12 +139,56 @@ function gfChartLengthCm(chart, size) {
     const c = lines[i];
     if (c.length === 1 && !c[0]) break;
     if (/^(size|розмір|частина)$/i.test(c[0])) break;
-    if (c.length > col && num(c[col]) !== null && /^[A-Z0-9]{1,4}$/i.test(c[0])) rows.push(c);
+    const v = c.length > col ? num(c[col]) : null;
+    if (v && v > 15 && v < 200 && /^[A-Z0-9]{1,4}$/i.test(c[0])) rows.push({ size: c[0].toUpperCase(), lengthCm: v });
   }
+  return rows;
+}
+
+// "Total length" (cm) for one size (falls back to the middle size).
+function gfChartLengthCm(chart, size) {
+  const rows = gfChartLengths(chart);
   if (!rows.length) return null;
-  const want = rows.find((c) => size && c[0].toUpperCase() === String(size).toUpperCase()) || rows[Math.floor(rows.length / 2)];
-  const v = num(want[col]);
-  return v && v > 15 && v < 200 ? v : null;
+  const want = rows.find((r) => size && r.size === String(size).toUpperCase()) || rows[Math.floor(rows.length / 2)];
+  return want.lengthCm;
+}
+
+// ---------- Where the hem really lands: measured from the floor, not from the model ----------
+// A garment's "total length" starts at a point on the body; that point's height above the
+// floor is a fixed share of the wearer's height (standard anthropometric proportions).
+// The hem then sits at  startHeight - length  above the floor (negative = lying on the floor).
+// RULE: never estimate length as "the model's hem moved by some % of the height difference".
+const GF_START = {
+  shoulder: 0.818, // high point of the shoulder: tops, coats, sleeved / wide-strap dresses
+  bodice: 0.72,    // top edge of a strappy / slip / strapless / halter bodice (straps are adjustable)
+  high: 0.62,      // high-waist bottoms: natural waist
+  mid: 0.58,       // mid-rise bottoms
+  low: 0.54,       // low-rise bottoms
+};
+function gfStartPoint(kind, text, rise) {
+  if (kind === "bottom") return rise === "high" ? "high" : rise === "low" ? "low" : "mid";
+  return /strap|spaghetti|slip dress|camisole|cami\b|bandeau|strapless|halter|corset|bretel|бретел|ramiącz|ramiacz|gorset/i.test(text || "") ? "bodice" : "shoulder";
+}
+function gfHemCm(lengthCm, userH, start) {
+  return Math.round((GF_START[start] * userH - lengthCm) * 10) / 10;
+}
+// Plain-language length facts for the verdict and the screen.
+function gfLengthFacts(chart, kind, text, rise, userH, modelH) {
+  const rows = gfChartLengths(chart);
+  if (!rows.length || !userH) return null;
+  const start = gfStartPoint(kind, text, rise);
+  return {
+    measuredFrom: { shoulder: "the high point of the shoulder", bodice: "the top edge of the bodice (straps not included)", high: "the natural waist", mid: "a mid-rise waistband", low: "a low-rise waistband" }[start],
+    bySize: rows.map((r) => ({ size: r.size, lengthCm: r.lengthCm, hemAboveFloorCmOnUser: gfHemCm(r.lengthCm, userH, start), hemAboveFloorCmOnModel: modelH ? gfHemCm(r.lengthCm, modelH, start) : null })),
+    note: "hemAboveFloorCm: positive = that many cm above the floor; 0 to -3 = touches the floor (fine only with heels); below -3 = drags on the floor and needs hemming.",
+  };
+}
+function gfHemWords(cm) {
+  if (cm > 40) return `${Math.round(cm)} cm above the floor (around the knee or above)`;
+  if (cm > 15) return `${Math.round(cm)} cm above the floor (mid-calf)`;
+  if (cm > 3) return `${Math.round(cm)} cm above the floor (ankle)`;
+  if (cm >= -3) return "at the floor";
+  return `${Math.round(-cm)} cm lying on the floor`;
 }
 
 // Plan the bands: where each measured row of the photo lands on the avatar and how wide.
@@ -161,7 +206,12 @@ function gfPlan(fit, kind, opts) {
   const srcAnchor = Math.max(...head.map(([l, r]) => (r - l) / 2)); // fraction of box width
   // Length in avatar units.
   let gh;
-  if (opts.lengthCm) gh = (opts.lengthCm * GF_UNITS) / userH;
+  let hemCm = null;
+  if (opts.lengthCm) {
+    // Hem height above the floor from real body proportions (see GF_START), then drawn there.
+    hemCm = gfHemCm(opts.lengthCm, userH, opts.start || (kind === "upper" ? "shoulder" : opts.rise || "mid"));
+    gh = (397 - Math.max(0, hemCm) * (GF_UNITS / userH)) - y0;
+  }
   else {
     // No chart length: read it off the photo. The anchor's real size on the model
     // (shoulders ≈ 22% of height, a flat waistband ≈ 19%) turns photo pixels into cm.
@@ -169,7 +219,7 @@ function gfPlan(fit, kind, opts) {
     const lengthCm = ((fit.box.h / fit.box.w) / (2 * srcAnchor)) * 2 * anchorHalfCm;
     gh = (lengthCm * GF_UNITS) / userH;
   }
-  gh = Math.max(20, Math.min(394 - y0, gh));
+  gh = Math.max(20, Math.min(396 - y0, gh));
   // Width: the garment keeps its photographed shape at true scale (photo px -> avatar
   // units, the same scale as the length), widened by how much wider this body is than
   // average at that height - and never narrower than the body itself where it must
@@ -188,7 +238,7 @@ function gfPlan(fit, kind, opts) {
     const half = covers ? Math.max(own, body + (kind === "upper" ? 2 : 1.2)) : own;
     bands.push({ y: y0 + i * bh, h: bh, l: row[0], r: row[1], half });
   }
-  return { y0, gh, bands };
+  return { y0, gh, bands, hemCm };
 }
 
 // Render a plan as SVG: one shared <image>, each band clipped and stretched to its width.
@@ -204,4 +254,4 @@ function gfSVG(url, plan, id) {
   return out;
 }
 
-if (typeof module !== "undefined") module.exports = { gfExtract, gfMeasure, gfChartLengthCm, gfPlan, gfSVG, gfLerp, GF_TORSO, GF_ROWS, GF_UNITS };
+if (typeof module !== "undefined") module.exports = { gfChartLengths, gfStartPoint, gfHemCm, gfLengthFacts, gfHemWords, GF_START, gfExtract, gfMeasure, gfChartLengthCm, gfPlan, gfSVG, gfLerp, GF_TORSO, GF_ROWS, GF_UNITS };
