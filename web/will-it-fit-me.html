@@ -580,11 +580,20 @@ function gfExtract(d, W, H) {
     return out;
   };
   const core = morph(cand, true); // eroded
-  const fill = new Uint8Array(N), q = [];
-  for (const p of border) if (core[p] && !fill[p]) { fill[p] = 1; q.push(p); }
-  while (q.length) {
-    const p = q.pop(), x = p % W;
-    for (const k of [x > 0 ? p - 1 : -1, x < W - 1 ? p + 1 : -1, p - W, p + W]) if (k >= 0 && k < N && core[k] && !fill[k]) { fill[k] = 1; q.push(k); }
+  // Fill every sizeable region of backdrop: the outside, and also closed-off pockets such as
+  // the gap between a sleeve and the body (real case: a leather jacket, sleeves held out).
+  // Thin highlight streaks on fabric were removed by the erosion, so they never qualify.
+  const fill = new Uint8Array(N), seen = new Uint8Array(N), minPocket = Math.max(40, N * 0.0015);
+  for (let s0 = 0; s0 < N; s0++) {
+    if (!core[s0] || seen[s0]) continue;
+    const list = [s0]; seen[s0] = 1;
+    let touches = false;
+    for (let i = 0; i < list.length; i++) {
+      const p = list[i], x = p % W, y = (p / W) | 0;
+      if (x === 0 || y === 0 || x === W - 1 || y === H - 1) touches = true;
+      for (const k of [x > 0 ? p - 1 : -1, x < W - 1 ? p + 1 : -1, p - W, p + W]) if (k >= 0 && k < N && core[k] && !seen[k]) { seen[k] = 1; list.push(k); }
+    }
+    if (touches || list.length >= minPocket) for (const p of list) fill[p] = 1;
   }
   const grown = morph(fill, false); // dilate back to the garment's edge
   const bg = new Uint8Array(N);
@@ -611,6 +620,16 @@ function gfExtract(d, W, H) {
   const bgOnly = bg.slice();
   let fg = 0, skinOut = 0;
   for (let p = 0; p < N; p++) if (!bg[p]) fg++;
+  // Only photos WITH a model get skin removed. A flat-lay or ghost-mannequin shot starts with a
+  // collar or waistband at the top and ends with a hem at the bottom; a model photo shows a
+  // neck / face at the top or legs / feet at the bottom. (Real case: a brown nappa jacket laid
+  // flat - leather can look like skin, and a whole sleeve was being cut away.)
+  let fy0 = H, fy1 = -1;
+  for (let p = 0; p < N; p++) if (!bgOnly[p]) { const y = (p / W) | 0; if (y < fy0) fy0 = y; if (y > fy1) fy1 = y; }
+  const bandShare = (ya, yb) => { let f = 0, sk = 0; for (let y = Math.max(0, ya); y <= Math.min(H - 1, yb); y++) for (let x = 0; x < W; x++) { const p = y * W + x; if (!bgOnly[p]) { f++; if (skin[p]) sk++; } } return f ? sk / f : 0; };
+  const bandH = Math.max(2, Math.round((fy1 - fy0) * 0.08));
+  const modelPhoto = fy1 > fy0 && Math.max(bandShare(fy0, fy0 + bandH), bandShare(fy1 - bandH, fy1)) > 0.3;
+  if (!modelPhoto) skin.fill(0);
   const comp = new Int32Array(N).fill(-1), minSkin = Math.max(30, N * 0.004), minEdge = Math.max(12, N * 0.0006);
   for (let s = 0; s < N; s++) {
     if (!skin[s] || comp[s] >= 0) continue;

@@ -226,3 +226,17 @@ test("a shop photo read from the product page goes on the avatar by itself", () 
   assert.ok(/gfExtract\(/.test(auto) && /measureCanvas\(/.test(auto) && /photoOff/.test(auto), "auto try-on cuts out, measures, and respects 'use the drawing instead'");
   assert.ok(/setTimeout\(\(\) => autoGarment\(c\)/.test(html), "the check screen starts it");
 });
+
+test("a brown leather jacket laid flat keeps its sleeves (leather is not skin without a model)", () => {
+  const W = 200, H = 150, d = new Uint8ClampedArray(W * H * 4);
+  const set = (x, y, c) => d.set([...c, 255], (y * W + x) * 4);
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) set(x, y, [246, 246, 246]);
+  for (let y = 20; y < 110; y++) for (let x = 50; x < 150; x++) set(x, y, (x + y) % 7 ? [104, 85, 78] : [81, 58, 52]); // body
+  for (let y = 25; y < 125; y++) { for (let x = 10; x < 46; x++) set(x, y, [104, 85, 78]); for (let x = 154; x < 190; x++) set(x, y, [104, 85, 78]); } // sleeves held out, a gap to the body
+  for (let y = 25; y < 30; y++) { for (let x = 46; x < 50; x++) set(x, y, [104, 85, 78]); for (let x = 150; x < 154; x++) set(x, y, [104, 85, 78]); } // shoulders join them
+  assert.ok(gf.gfExtract(d, W, H));
+  const alpha = (x, y) => d[(y * W + x) * 4 + 3];
+  assert.strictEqual(alpha(25, 80), 255, "left sleeve kept");
+  assert.strictEqual(alpha(170, 80), 255, "right sleeve kept");
+  assert.strictEqual(alpha(48, 80), 0, "gap between sleeve and body removed");
+});
