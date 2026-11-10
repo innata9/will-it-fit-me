@@ -268,3 +268,9 @@ test("an ivory skirt on a light-grey backdrop is kept whole (low contrast)", () 
   assert.ok(holes / total < 0.01, `ivory fabric must stay whole, ${(100 * holes / total).toFixed(1)}% removed`);
   assert.strictEqual(d[(5 * W + 5) * 4 + 3], 0, "backdrop removed");
 });
+
+test("hats: head circumference in the profile and size match; hat photos sit on the avatar's head", () => {
+  assert.ok(/key: "headCm", title: "Head"/.test(html), "profile asks for head circumference");
+  assert.ok(/head: "headCm"/.test(html), "size match uses head circumference");
+  assert.ok(/const hatPhoto = hat \? photoOf\(hat\) : null;/.test(html), "a hat photo is drawn on the head");
+});

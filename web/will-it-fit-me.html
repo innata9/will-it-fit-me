@@ -177,6 +177,7 @@ const MEASURES = [
   { key: "inseamCm", title: "Inseam", unit: "cm", req: false, min: 55, max: 100, how: "Barefoot, measure from the crotch down the inside of the leg to the floor. Or measure the inside seam of trousers that are the right length.", why: "Tells you whether trousers will need shortening." },
   { key: "armCm", title: "Arm length", unit: "cm", req: false, min: 40, max: 80, how: "With your arm slightly bent, measure from the shoulder bone over the elbow to the wrist bone.", why: "Shows whether sleeves will be too short or too long." },
   { key: "footCm", title: "Foot length", unit: "cm", req: false, min: 18, max: 32, how: "Stand on paper with your heel against a wall and trace your foot. Measure from the heel to the longest toe. Do both feet in the evening and use the longer one.", why: "Matched to each brand’s shoe size chart." },
+  { key: "headCm", title: "Head", unit: "cm", req: false, min: 45, max: 66, how: "Wrap a soft tape level around your head through the middle of the forehead, about 0.5 cm above the ears. Overlap the ends and read the number.", why: "Picks the right size for hats, caps and berets." },
   { key: "weightKg", title: "Weight", unit: "kg", req: false, min: 30, max: 250, how: "Optional. Weigh yourself in the morning on the same scale.", why: "Only used to read size charts that list weight. Never shown or commented on." },
 ];
 const TIPS = ["Use a soft tape measure, not a metal one.", "Measure over thin underwear or close-fitting clothes.", "Keep the tape level all the way around — check in a mirror.", "Snug, not tight: one finger should slide under the tape.", "Stand straight and relaxed, feet together, looking ahead.", "Measure twice. If the numbers differ, use the average."];
@@ -236,7 +237,7 @@ function paletteFit(h, ct) {
 
 /* Deterministic size match: smallest size where no measurement is over its max (stretch gives tolerance). */
 function matchSize(chart, m, stretch) {
-  const keys = { bust: "bustCm", waist: "waistCm", hips: "hipsCm", inseam: "inseamCm", footLength: "footCm" };
+  const keys = { bust: "bustCm", waist: "waistCm", hips: "hipsCm", inseam: "inseamCm", footLength: "footCm", head: "headCm" };
   const f = chart.unit === "in" ? 2.54 : 1;
   const tol = stretch === "high" ? 3 : stretch === "some" ? 1.5 : 0;
   const rows = arr(chart.rows).map((r) => {
@@ -325,12 +326,12 @@ Reply with only JSON in exactly this shape (12 items in best, 3-4 in neutrals, 4
 Allowed values: undertone warm|cool|neutral|olive; contrast low|medium|high; chroma muted|medium|bright; value light|medium|deep; confidence high|medium|low.`;
 
 const EXTRACT_PROMPT = (note) => `You read information about ONE clothing, shoe or bag product that the user copied from an online shop: pasted text (product details, size chart, link) and, if attached, screenshots. Extract only facts that are actually given. Never guess a size table. Pasted size tables may have lost their layout: rebuild rows from the order of sizes and numbers, and use the column headers when present.
-If a size table is visible, transcribe it into sizeChart: one row per size, each measurement as {"min":n,"max":n} (a single number means min = max; use null when absent). Map chest/bust to bust, waist to waist, hip to hips, inside leg/inseam to inseam, foot length to footLength. kind is "body" for body measurements, "garment" for garment measurements.
+If a size table is visible, transcribe it into sizeChart: one row per size, each measurement as {"min":n,"max":n} (a single number means min = max; use null when absent). Map chest/bust to bust, waist to waist, hip to hips, inside leg/inseam to inseam, foot length to footLength, head circumference (hats, caps) to head. Headwear sizes like "56-57" are head circumference ranges in cm. kind is "body" for body measurements, "garment" for garment measurements.
 colorHex: your best estimate of the item's main color as #RRGGBB.
 ${note ? `THE USER'S COPIED INFORMATION:\n"""${note.slice(0, 14000)}"""\n` : ""}
 Reply with only JSON in exactly this shape:
-{"found":true,"name":"Midi shirt dress","brand":null,"store":null,"price":null,"oldPrice":null,"category":"dress","colorName":null,"colorHex":"#B5603F","availableSizes":[],"sizeChart":{"unit":"cm","kind":"body","rows":[{"size":"S","bust":{"min":84,"max":88},"waist":null,"hips":null,"inseam":null,"footLength":null}]},"fabric":null,"stretch":"unknown","fit":null,"lengthNote":null,"modelHeightCm":null,"modelSize":null,"shaftCircumferenceCm":null,"reviewsAboutSize":null,"returns":null}
-category is one of dress|top|bottom|outerwear|shoes|boots|bag|accessory|other. stretch is none|some|high|unknown. Use sizeChart null when no table is visible. Set found false if this is not a single clothing, shoe or bag product.`;
+{"found":true,"name":"Midi shirt dress","brand":null,"store":null,"price":null,"oldPrice":null,"category":"dress","colorName":null,"colorHex":"#B5603F","availableSizes":[],"sizeChart":{"unit":"cm","kind":"body","rows":[{"size":"S","bust":{"min":84,"max":88},"waist":null,"hips":null,"inseam":null,"footLength":null,"head":null}]},"fabric":null,"stretch":"unknown","fit":null,"lengthNote":null,"modelHeightCm":null,"modelSize":null,"shaftCircumferenceCm":null,"reviewsAboutSize":null,"returns":null}
+category is one of dress|top|bottom|outerwear|shoes|boots|bag|accessory|other. stretch is none|some|high|unknown. Use sizeChart null when no table is visible. Set found false if this is not a single clothing, headwear, shoe or bag product (hats and caps count: category accessory).`;
 
 const VERDICT_PROMPT = (data) => `You are a personal stylist answering one question before an online purchase: "Will this item fit ME — size, cut and color?"
 You get the user's body profile and color type, facts extracted from the product, and a size match COMPUTED BY CODE from the brand's size chart. Trust the computed numbers; never recompute them. If there is no size chart, estimate from standard EU sizing and lower confidence.
@@ -944,7 +945,15 @@ function avatarSVG(look, width) {
 <path d="M90.5 37.6 Q94 35.8 97.5 37" stroke="${hair}" stroke-width="1.2" stroke-linecap="round" fill="none"/><path d="M102.5 37 Q106 35.8 109.5 37.6" stroke="${hair}" stroke-width="1.2" stroke-linecap="round" fill="none"/>
 <path d="M100 43 L98.6 50 Q100 51.2 101.6 50" stroke="#000" stroke-opacity=".25" stroke-width=".9" stroke-linecap="round" fill="none"/>
 <path d="M95.5 55 Q98 53.4 100 54.4 Q102 53.4 104.5 55 Q100 56.2 95.5 55 Z" fill="#B9675A"/><path d="M95.5 55 Q100 58.6 104.5 55 Q100 56.2 95.5 55 Z" fill="#C67466"/>
-<path d="M86 36 C86 20 100 14 112 22 C116 26 115 32 114 36 C108 28 98 26 88 40 Z" fill="${hair}"/></g></svg>`;
+<path d="M86 36 C86 20 100 14 112 22 C116 26 115 32 114 36 C108 28 98 26 88 40 Z" fill="${hair}"/>`;
+  // Hats and caps from the shop photo sit on the head: as wide as the head plus hair, brim at the forehead.
+  const hat = pieces.find((p) => p.slot === "accessory" && /hat|cap|beret|beanie|kangol|cloche|fedora|panama|капел|кепі|кепк|картуз|канголк|берет|шапк|панам/i.test(p.name || ""));
+  const hatPhoto = hat ? photoOf(hat) : null;
+  if (hatPhoto) {
+    const hw = 46, hh = Math.min(36, hw * (hatPhoto.h / hatPhoto.w));
+    s += `<image href="${hatPhoto.url}" x="${100 - hw / 2}" y="${(34 - hh).toFixed(1)}" width="${hw}" height="${hh.toFixed(1)}" preserveAspectRatio="none"/>`;
+  }
+  s += `</g></svg>`;
   return s;
 }
 
