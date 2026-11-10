@@ -100,6 +100,7 @@ label.lbl { font-size: 14px; font-weight: 800; }
 
 .list-row { display: flex; align-items: center; gap: 12px; background: var(--surface); border-radius: 14px; padding: 10px 12px; border: 0; width: 100%; text-align: left; color: var(--ink); }
 .thumb { width: 44px; height: 54px; border-radius: 8px; flex-shrink: 0; object-fit: cover; }
+.thumb.photo { object-fit: contain; background: var(--stage); padding: 2px; box-sizing: border-box; }
 .axis { display: flex; gap: 12px; padding: 14px 0; border-top: 1px solid var(--line); }
 .axis:first-child { border-top: 0; }
 .axis .tag { width: 92px; flex-shrink: 0; }
@@ -1074,7 +1075,7 @@ const checkRow = (c) => {
   const title = it ? it.name : c.note ? c.note.slice(0, 40) : "Screenshot check";
   const meta = it ? [it.brand || it.store, v && v.recommendedSize ? `size ${v.recommendedSize}` : null].filter(Boolean).join(" · ") : c.status === "pending" ? "Checking…" : c.error || "";
   const badge = c.status === "pending" ? `<span class="pill acc">Checking</span>` : v ? `<span class="pill ${VERDICT[v.verdict][1]}">${VERDICT[v.verdict][0]}</span>` : `<span class="pill bad">Failed</span>`;
-  return `<button class="list-row" data-a="openCheck" data-id="${c.id}"><span class="thumb" style="background:${it ? it.colorHex : "var(--line)"}"></span><span class="grow"><b style="display:block;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(title)}</b><span class="tiny" style="display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(meta)}</span></span>${badge}</button>`;
+  return `<button class="list-row" data-a="openCheck" data-id="${c.id}">${checkThumb(c)}<span class="grow"><b style="display:block;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(title)}</b><span class="tiny" style="display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(meta)}</span></span>${badge}</button>`;
 };
 
 V.home = () => {
@@ -1084,7 +1085,7 @@ V.home = () => {
   return `<div class="stack" style="gap:6px;padding-top:8px"><p class="tiny" style="font-weight:700">Will it fit me?</p><h1>Check an item before you buy</h1></div>
   ${S.caps.sample ? "" : `<div class="notice warn">AI checks need the Claude app or claude.ai. Open this page there.</div>`}
   ${arr(S.inbox).length ? `<div class="card accent"><h2>Ready to check</h2><p class="small">Items Claude read from the links you sent in chat.</p>
-    ${S.inbox.map((it) => `<div class="row" style="background:var(--surface);border-radius:14px;padding:10px 12px"><span class="thumb" style="background:${hex(it.colorHex)}"></span><div class="grow"><b style="display:block;font-size:14px">${esc(it.name || "Item")}</b><span class="tiny">${esc([it.store, it.price].filter(Boolean).join(" · "))}${it.chart ? "" : " · no size chart found"}</span></div><button class="btn small-btn" data-a="inboxCheck" data-id="${esc(it.id)}">Check</button><button class="iconbtn" style="background:transparent" data-a="inboxDel" data-id="${esc(it.id)}" aria-label="Remove">×</button></div>`).join("")}</div>` : ""}
+    ${S.inbox.map((it) => `<div class="row" style="background:var(--surface);border-radius:14px;padding:10px 12px">${it.photoUrl ? `<img class="thumb photo" src="${esc(it.photoUrl)}" alt="" loading="lazy">` : `<span class="thumb" style="background:${hex(it.colorHex)}"></span>`}<div class="grow"><b style="display:block;font-size:14px">${esc(it.name || "Item")}</b><span class="tiny">${esc([it.store, it.price].filter(Boolean).join(" · "))}${it.chart ? "" : " · no size chart found"}</span></div><button class="btn small-btn" data-a="inboxCheck" data-id="${esc(it.id)}">Check</button><button class="iconbtn" style="background:transparent" data-a="inboxDel" data-id="${esc(it.id)}" aria-label="Remove">×</button></div>`).join("")}</div>` : ""}
   <div class="card">
     <p class="small">Copy the item’s information from the shop and paste it here, or send the link to Claude in chat (see below). The size chart matters most.</p>
     <details class="small"><summary style="cursor:pointer;color:var(--accent);font-weight:800;min-height:32px">How to copy text from a screenshot</summary>
@@ -1116,7 +1117,7 @@ V.home = () => {
 V.check = () => {
   const c = S.data.checks.find((x) => x.id === S.params.id);
   if (!c) return `${topbar("Item check")}<h1>Check not found</h1>`;
-  if (c.status === "done" && c.input && c.input.photoUrl) setTimeout(() => autoGarment(c), 0);
+  if (c.status === "done" && photoUrlFor(c)) setTimeout(() => autoGarment(c), 0);
   const heart = `<button class="iconbtn" data-a="wish" data-id="${c.id}" aria-label="${c.wished ? "Remove from wishlist" : "Add to wishlist"}" style="color:${c.wished ? "var(--accent)" : "var(--ink)"}">${icon("heart", 20, c.wished)}</button>`;
   if (c.status === "pending") return `${topbar("Item check")}<div class="stack" style="align-items:center;padding:56px 0;text-align:center"><div class="spinner" role="status" aria-label="Checking"></div><h2>${esc(c.stage || "Checking this item…")}</h2><p class="small">Reading the size chart, fabric and photos. Usually 30–90 seconds. Keep this page open.</p></div>`;
   if (c.status === "error" || !c.result) return `${topbar("Item check")}<div class="notice bad" role="alert">${esc(c.error || "Something went wrong.")}</div>${S.mem.files[c.id] ? `<button class="btn" data-a="retry" data-id="${c.id}">Try again</button>` : ""}<button class="btn secondary" data-a="tab" data-v="home">Back to home</button>`;
@@ -1374,7 +1375,8 @@ function measureCanvas(cv) {
 // goes onto the avatar automatically - same cut-out and fitting as a photo you pick.
 function autoGarment(c) {
   S.mem.autoTried = S.mem.autoTried || {};
-  if (!c || c.status !== "done" || !c.input || !c.input.photoUrl || c.input.photoOff || S.mem.autoTried[c.id]) return;
+  const src = photoUrlFor(c);
+  if (!c || c.status !== "done" || !src || (c.input && c.input.photoOff) || S.mem.autoTried[c.id]) return;
   try { if (localStorage.getItem("wifm-g-" + c.id)) return; } catch (e) { /* ignore */ }
   if (S.mem.garments && S.mem.garments[c.id]) return;
   S.mem.autoTried[c.id] = true;
@@ -1395,7 +1397,19 @@ function autoGarment(c) {
     try { localStorage.setItem("wifm-g-" + c.id, JSON.stringify(g)); } catch (e) { /* kept for this visit */ }
     render();
   };
-  img.src = c.input.photoUrl;
+  img.src = src;
+}
+// The item's own picture in lists: your cut-out from the shop photo, else the shop photo,
+// else a swatch of its colour.
+function photoUrlFor(c) {
+  return (c && c.input && c.input.photoUrl) || (S.photos && c && S.photos[c.id]) || null;
+}
+function checkThumb(c) {
+  const g = garmentFor(c.id);
+  const url = (g && g.url) || photoUrlFor(c);
+  if (url) return `<img class="thumb photo" src="${esc(url)}" alt="" loading="lazy">`;
+  const it = c.result && c.result.item;
+  return `<span class="thumb" style="background:${it ? it.colorHex : "var(--line)"}"></span>`;
 }
 function measureSaved(id, g) {
   const im = new Image();
@@ -1579,7 +1593,7 @@ const A = {
     S.mem.garments[d.id] = null;
     try { localStorage.removeItem("wifm-g-" + d.id); } catch (e) { /* ignore */ }
     const c = S.data.checks.find((x) => x.id === d.id);
-    if (c && c.input && c.input.photoUrl) { c.input.photoOff = true; save(); } // don't put the shop photo back on by itself
+    if (c && photoUrlFor(c)) { c.input.photoOff = true; save(); } // don't put the shop photo back on by itself
     render();
   },
   fColor: (d) => { const F = S.ui.form; F.colorHex = d.val; F.colorName = d.name; render(); },
@@ -1761,6 +1775,14 @@ $("#fileShots").addEventListener("change", (e) => {
         if (S.view === "home") render();
       }, () => {});
     } catch (e) { /* inbox unavailable */ }
+    // Shop photos Claude adds to items you already checked live in their own document,
+    // so they never clash with the app saving your data.
+    try {
+      db.doc("data/users/" + S.caps.uid + "/photos").onSnapshot((snap) => {
+        S.photos = (snap && snap.exists && snap.data() && snap.data().byCheck) || {};
+        if (S.view === "home" || S.view === "check" || S.view === "wishlist") render();
+      }, () => {});
+    } catch (e) { /* photos unavailable */ }
   }
   S.view = "boot";
   go(S.data.onboarded ? "home" : "welcome", {}, { replace: true });

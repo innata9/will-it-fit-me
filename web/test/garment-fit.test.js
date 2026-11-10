@@ -240,3 +240,9 @@ test("a brown leather jacket laid flat keeps its sleeves (leather is not skin wi
   assert.strictEqual(alpha(170, 80), 255, "right sleeve kept");
   assert.strictEqual(alpha(48, 80), 0, "gap between sleeve and body removed");
 });
+
+test("check lists show the item's own photo; shop photos for older checks come from a separate document", () => {
+  assert.ok(/\$\{checkThumb\(c\)\}/.test(html), "recent checks / wishlist rows use the item photo");
+  assert.ok(/it\.photoUrl \? `<img class="thumb photo"/.test(html), "inbox rows show the shop photo");
+  assert.ok(/"\/photos"\)\.onSnapshot/.test(html) && /function photoUrlFor/.test(html), "photos added later are read from data/users/<id>/photos");
+});
