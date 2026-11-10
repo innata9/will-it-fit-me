@@ -167,3 +167,61 @@ test("length facts give the hem for every size, and the app no longer uses the o
   assert.ok(!/lengthShift|\* 0\.47/.test(html), "the old model-height % rule is back");
   assert.ok(/computedLength: lengthFacts/.test(html), "the verdict must get the real hem facts");
 });
+
+// ---------- Pale fabric on a white backdrop ----------
+// Real case: a butter-yellow slip dress on white (Le Privé "Felice"). The background fill
+// leaked into the pale fabric and cream was taken for skin, so only scraps reached the avatar.
+// The shop's photo is not stored here; this synthetic one has the same traits: near-white
+// backdrop with JPEG-like noise, pale yellow fabric, near-white highlight streaks that run
+// to the garment's edge, small peach/pink flowers, thin straps.
+function paleDress(W, H) {
+  const d = new Uint8ClampedArray(W * H * 4);
+  let seed = 7; const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+  const set = (x, y, c) => { const a = (y * W + x) * 4; d[a] = c[0]; d[a + 1] = c[1]; d[a + 2] = c[2]; d[a + 3] = 255; };
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { const n = Math.round(rnd() * 3); set(x, y, [254 - n, 254 - n, 254 - n]); }
+  const top = Math.round(H * 0.18), bot = Math.round(H * 0.95), cx = W / 2;
+  const half = (y) => { const t = (y - top) / (bot - top); return W * (0.17 + 0.03 * Math.sin(t * 3) + (t > 0.7 ? (t - 0.7) * 0.25 : 0)); };
+  for (let y = top; y < bot; y++) for (let x = Math.round(cx - half(y)); x < Math.round(cx + half(y)); x++) {
+    const streak = Math.abs(((x + y * 0.4) % (W * 0.12)) - W * 0.06) < W * 0.006; // diagonal highlight folds
+    set(x, y, streak ? [252, 251, 244] : [246, 238, 196]);
+  }
+  for (let i = 0; i < 160; i++) { const y = top + Math.round(rnd() * (bot - top - 6)), x = Math.round(cx - half(y) * 0.8 + rnd() * half(y) * 1.6); for (let k = 0; k < 9; k++) set(x + (k % 3), y + Math.floor(k / 3), rnd() > 0.5 ? [226, 160, 140] : [205, 150, 160]); }
+  for (const sx of [cx - half(top) * 0.8, cx + half(top) * 0.8]) for (let y = Math.round(H * 0.05); y < top; y++) for (let k = 0; k < Math.max(2, W * 0.008); k++) set(Math.round(sx + k), y, [246, 238, 196]); // straps
+  return d;
+}
+for (const [W, H] of [[800, 1199], [534, 800]]) {
+  test(`pale dress on white survives the cut-out (${W}x${H})`, () => {
+    const d = paleDress(W, H);
+    const r = gf.gfExtract(d, W, H);
+    assert.ok(r, "something must be kept");
+    const f = gf.gfMeasure(d, W, H);
+    assert.ok(f.box.h / H > 0.85, "from the straps down to the hem");
+    const alpha = (x, y) => d[(y * W + x) * 4 + 3];
+    const cx = Math.round(W / 2);
+    let holes = 0, total = 0;
+    for (let y = Math.round(H * 0.2); y < Math.round(H * 0.94); y += 3) for (let x = cx - Math.round(W * 0.12); x < cx + Math.round(W * 0.12); x += 3) { total++; if (!alpha(x, y)) holes++; }
+    assert.ok(holes / total < 0.01, `the fabric must stay whole, ${(100 * holes / total).toFixed(1)}% was removed`);
+    assert.strictEqual(alpha(5, 5), 0, "white backdrop removed");
+  });
+}
+test("cream / butter-yellow fabric is not mistaken for skin", () => {
+  const W = 60, H = 100, d = new Uint8ClampedArray(W * H * 4);
+  for (let p = 0; p < W * H; p++) { const x = p % W, y = Math.floor(p / W), a = p * 4; const inG = x >= 15 && x < 45 && y >= 10 && y < 90; d.set(inG ? [240, 228, 190, 255] : [120, 120, 125, 255], a); }
+  gf.gfExtract(d, W, H);
+  assert.strictEqual(d[(50 * W + 30) * 4 + 3], 255);
+});
+
+test("typical length is used (and marked) when the chart has none", () => {
+  assert.strictEqual(gf.gfTypicalLengthCm("bodice", "Felice midi dress, thin straps"), 108);
+  assert.strictEqual(gf.gfTypicalLengthCm("shoulder", "maxi coat"), 140);
+  assert.strictEqual(gf.gfTypicalLengthCm("bodice", "dress"), null);
+  assert.ok(/estimated: !chartCm/.test(html) && /a typical \$\{L\.lengthCm\} cm is assumed/.test(html), "the app must say when the length is an estimate");
+});
+
+test("a shop photo read from the product page goes on the avatar by itself", () => {
+  assert.ok(/photoUrl: it\.photoUrl/.test(html), "inbox item passes its photo to the check");
+  assert.ok(/photoUrl: F\.photoUrl/.test(html), "the check keeps the photo");
+  const auto = grab("autoGarment");
+  assert.ok(/gfExtract\(/.test(auto) && /measureCanvas\(/.test(auto) && /photoOff/.test(auto), "auto try-on cuts out, measures, and respects 'use the drawing instead'");
+  assert.ok(/setTimeout\(\(\) => autoGarment\(c\)/.test(html), "the check screen starts it");
+});

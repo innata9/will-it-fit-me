@@ -552,13 +552,52 @@ function gfExtract(d, W, H) {
   const med = (k) => { const v = border.map((p) => d[A(p) + k]).sort((a, b) => a - b); return v[v.length >> 1]; };
   const ref = [med(0), med(1), med(2)];
   const toRef = (p) => { const a = A(p); const r = d[a] - ref[0], g = d[a + 1] - ref[1], b = d[a + 2] - ref[2]; return r * r + g * g + b * b; };
-  const bg = new Uint8Array(N), q = [];
-  for (const p of border) if (!bg[p] && toRef(p) < 70 * 70) { bg[p] = 1; q.push(p); }
+  // How much the backdrop itself varies (soft gradients, vignettes) sets the tolerances:
+  // a plain white studio backdrop gets a tight one, so pale / cream / white-ish fabric is
+  // NOT eaten by the background fill (real case: a butter-yellow slip dress on white).
+  let varSum = 0;
+  for (const p of border) varSum += toRef(p);
+  const spread = Math.sqrt(varSum / border.length);
+  const T = Math.max(12, Math.min(40, 3 * spread));
+  // Backdrop candidates: close to the backdrop colour. Pale fabric can have near-white
+  // highlights, so the fill runs on an ERODED candidate mask: thin bridges of highlight
+  // pixels through the fabric are cut, and the fill cannot leak into the garment.
+  const cand = new Uint8Array(N);
+  for (let p = 0; p < N; p++) cand[p] = toRef(p) < (2 * T) ** 2 ? 1 : 0;
+  const R = Math.max(2, Math.round(Math.min(W, H) / 220));
+  const morph = (src, keepIf) => { // separable square min (erode) or max (dilate), radius R
+    const tmp = new Uint8Array(N), out = new Uint8Array(N);
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+      let v = keepIf ? 1 : 0;
+      for (let k = -R; k <= R; k++) { const xx = x + k; const s = xx < 0 || xx >= W ? (keepIf ? 1 : 0) : src[y * W + xx]; if (keepIf ? !s : s) { v = keepIf ? 0 : 1; break; } }
+      tmp[y * W + x] = v;
+    }
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+      let v = keepIf ? 1 : 0;
+      for (let k = -R; k <= R; k++) { const yy = y + k; const s = yy < 0 || yy >= H ? (keepIf ? 1 : 0) : tmp[yy * W + x]; if (keepIf ? !s : s) { v = keepIf ? 0 : 1; break; } }
+      out[y * W + x] = v;
+    }
+    return out;
+  };
+  const core = morph(cand, true); // eroded
+  const fill = new Uint8Array(N), q = [];
+  for (const p of border) if (core[p] && !fill[p]) { fill[p] = 1; q.push(p); }
   while (q.length) {
     const p = q.pop(), x = p % W;
-    for (const k of [x > 0 ? p - 1 : -1, x < W - 1 ? p + 1 : -1, p - W, p + W]) {
-      if (k < 0 || k >= N || bg[k]) continue;
-      if (dist2(p, k) < 14 * 14 && toRef(k) < 75 * 75) { bg[k] = 1; q.push(k); }
+    for (const k of [x > 0 ? p - 1 : -1, x < W - 1 ? p + 1 : -1, p - W, p + W]) if (k >= 0 && k < N && core[k] && !fill[k]) { fill[k] = 1; q.push(k); }
+  }
+  const grown = morph(fill, false); // dilate back to the garment's edge
+  const bg = new Uint8Array(N);
+  for (let p = 0; p < N; p++) bg[p] = grown[p] && cand[p] ? 1 : 0;
+  for (const p of border) if (cand[p]) bg[p] = 1;
+  // Narrow gaps the erosion skipped (between an arm and the body): spread into pixels that
+  // are the backdrop colour almost exactly - tight enough not to enter pale fabric.
+  {
+    const tight = Math.max(4, 0.6 * T) ** 2, st = [];
+    for (let p = 0; p < N; p++) if (bg[p]) st.push(p);
+    while (st.length) {
+      const p = st.pop(), x = p % W;
+      for (const k of [x > 0 ? p - 1 : -1, x < W - 1 ? p + 1 : -1, p - W, p + W]) if (k >= 0 && k < N && !bg[k] && toRef(k) < tight) { bg[k] = 1; st.push(k); }
     }
   }
   // 2) Skin: YCbCr skin range, removed only as large connected areas (a print's small peach flowers stay).
@@ -567,7 +606,7 @@ function gfExtract(d, W, H) {
     if (bg[p]) continue;
     const a = A(p), r = d[a], g = d[a + 1], b = d[a + 2];
     const y = 0.299 * r + 0.587 * g + 0.114 * b, cb = 128 - 0.1687 * r - 0.3313 * g + 0.5 * b, cr = 128 + 0.5 * r - 0.4187 * g - 0.0813 * b;
-    if (y > 50 && cr > 135 && cr < 180 && cb > 80 && cb < 130 && r > g && r > b) skin[p] = 1;
+    if (y > 50 && cr > 135 && cr < 180 && cb > 80 && cb < 130 && r - g >= 18 && r > b) skin[p] = 1; // r-g: real skin is clearly redder than cream / butter-yellow fabric
   }
   const bgOnly = bg.slice();
   let fg = 0, skinOut = 0;
@@ -667,6 +706,19 @@ function gfLengthFacts(chart, kind, text, rise, userH, modelH) {
     note: "hemAboveFloorCm: positive = that many cm above the floor; 0 to -3 = touches the floor (fine only with heels); below -3 = drags on the floor and needs hemming.",
   };
 }
+// No length in the chart: a typical length for the named style (midi, maxi...), so the hem is
+// still placed from the floor. Marked as an estimate wherever it is shown.
+function gfTypicalLengthCm(start, text) {
+  const t = String(text || "").toLowerCase();
+  const style = /maxi|floor|długa|довг/.test(t) ? "maxi" : /midi|calf|міді/.test(t) ? "midi" : /mini|міні/.test(t) ? "mini" : /knee|коліна/.test(t) ? "knee" : null;
+  if (!style) return null;
+  const table = {
+    bodice: { mini: 78, knee: 92, midi: 108, maxi: 128 },
+    shoulder: { mini: 85, knee: 100, midi: 118, maxi: 140 },
+    high: { mini: 42, knee: 60, midi: 78, maxi: 98 }, mid: { mini: 40, knee: 58, midi: 75, maxi: 95 }, low: { mini: 38, knee: 56, midi: 72, maxi: 92 },
+  };
+  return table[start] ? table[start][style] : null;
+}
 function gfHemWords(cm) {
   if (cm > 40) return `${Math.round(cm)} cm above the floor (around the knee or above)`;
   if (cm > 15) return `${Math.round(cm)} cm above the floor (mid-calf)`;
@@ -757,9 +809,10 @@ function lengthInfo(c) {
   const txt = `${it.name} ${it.lengthNote || ""} ${c.input.details || ""}`;
   const rise = /high[- ]?(rise|waist)|висок/i.test(txt) ? "high" : /low[- ]?rise|низьк/i.test(txt) ? "low" : "mid";
   const start = gfStartPoint(kind, txt, rise);
-  const lengthCm = gfChartLengthCm(c.input.chart, size);
+  const chartCm = gfChartLengthCm(c.input.chart, size);
+  const lengthCm = chartCm || gfTypicalLengthCm(start, txt);
   const h = Number(S.data.m.heightCm);
-  return { kind, size, rise, start, lengthCm, hemCm: lengthCm && h ? gfHemCm(lengthCm, h, start) : null, bought: !!bought };
+  return { kind, size, rise, start, lengthCm, estimated: !chartCm && !!lengthCm, hemCm: lengthCm && h ? gfHemCm(lengthCm, h, start) : null, bought: !!bought };
 }
 
 function bodyNote(modelH, c) {
@@ -767,7 +820,7 @@ function bodyNote(modelH, c) {
   const parts = [m.heightCm ? `${m.heightCm} cm tall` : null, m.shouldersCm ? `${m.shouldersCm} cm shoulders` : null, m.bustCm && m.waistCm && m.hipsCm ? `${m.bustCm}/${m.waistCm}/${m.hipsCm}` : null].filter(Boolean);
   const own = parts.length ? `Drawn to your body: ${parts.join(", ")}.` : "Add your measurements to shape the avatar.";
   const L = c ? lengthInfo(c) : null;
-  const hem = L && L.hemCm !== null ? ` Length ${L.lengthCm} cm (size ${L.size}): the hem is ${gfHemWords(L.hemCm)} on you, barefoot.` : "";
+  const hem = L && L.hemCm !== null ? (L.estimated ? ` No length in the size chart, so a typical ${L.lengthCm} cm is assumed: the hem is about ${gfHemWords(L.hemCm)} on you, barefoot.` : ` Length ${L.lengthCm} cm (size ${L.size}): the hem is ${gfHemWords(L.hemCm)} on you, barefoot.`) : "";
   return `${own}${hem} Shop photo re-proportioned from a ${modelH ? modelH + " cm" : "typical 176 cm"} model.`;
 }
 
@@ -828,6 +881,10 @@ function avatarSVG(look, width) {
   if (upperPhoto) {
     // Top, dress or coat from the shop photo, fitted row by row to YOUR body (see gfPlan).
     const ph = outerPhoto ? outer : dressPhoto ? dress : top;
+    // Straps / sleeveless / halter: your shoulders, chest and arms show around it.
+    const phc = S.data.checks.find((x) => x.id === ph.ref);
+    const bare = !outerPhoto && /strap|sleeveless|halter|cami|bandeau|strapless|tank|slip dress|бретел|ramiącz|bez rękaw|без рукав/i.test(`${ph.name} ${phc && phc.input ? phc.input.details : ""}`);
+    if (bare) s += `<path d="${TOP}" fill="${skin}"/><path d="${ARML}" fill="${skin}"/><path d="${ARMR}" fill="${skin}"/><path d="${ARML}" fill="#000" fill-opacity=".08"/><path d="M55 203 C53 211 54 221 58 223 C62 224 65 214 64 204 Z" fill="${skin}"/><path d="M145 203 C147 211 146 221 142 223 C138 224 135 214 136 204 Z" fill="${skin}"/>`;
     s += fitPhoto(ph, upperPhoto, "upper", K, g + "u", !!outerPhoto);
   } else {
     const armFill = outer ? c(outer) : skin;
@@ -1028,6 +1085,7 @@ V.home = () => {
 V.check = () => {
   const c = S.data.checks.find((x) => x.id === S.params.id);
   if (!c) return `${topbar("Item check")}<h1>Check not found</h1>`;
+  if (c.status === "done" && c.input && c.input.photoUrl) setTimeout(() => autoGarment(c), 0);
   const heart = `<button class="iconbtn" data-a="wish" data-id="${c.id}" aria-label="${c.wished ? "Remove from wishlist" : "Add to wishlist"}" style="color:${c.wished ? "var(--accent)" : "var(--ink)"}">${icon("heart", 20, c.wished)}</button>`;
   if (c.status === "pending") return `${topbar("Item check")}<div class="stack" style="align-items:center;padding:56px 0;text-align:center"><div class="spinner" role="status" aria-label="Checking"></div><h2>${esc(c.stage || "Checking this item…")}</h2><p class="small">Reading the size chart, fabric and photos. Usually 30–90 seconds. Keep this page open.</p></div>`;
   if (c.status === "error" || !c.result) return `${topbar("Item check")}<div class="notice bad" role="alert">${esc(c.error || "Something went wrong.")}</div>${S.mem.files[c.id] ? `<button class="btn" data-a="retry" data-id="${c.id}">Try again</button>` : ""}<button class="btn secondary" data-a="tab" data-v="home">Back to home</button>`;
@@ -1275,6 +1333,33 @@ function measureCanvas(cv) {
   out.getContext("2d").drawImage(cv, b.x, b.y, b.w, b.h, 0, 0, b.w, b.h);
   return { url: out.toDataURL("image/png"), w: b.w, h: b.h, fit: { box: { w: b.w, h: b.h }, rows: fit.rows } };
 }
+// The shop photo Claude read from the product page (saved in this app's own file store)
+// goes onto the avatar automatically - same cut-out and fitting as a photo you pick.
+function autoGarment(c) {
+  S.mem.autoTried = S.mem.autoTried || {};
+  if (!c || c.status !== "done" || !c.input || !c.input.photoUrl || c.input.photoOff || S.mem.autoTried[c.id]) return;
+  try { if (localStorage.getItem("wifm-g-" + c.id)) return; } catch (e) { /* ignore */ }
+  if (S.mem.garments && S.mem.garments[c.id]) return;
+  S.mem.autoTried[c.id] = true;
+  const img = new Image();
+  img.onload = () => {
+    const scale = Math.min(1, 800 / Math.max(img.naturalWidth, img.naturalHeight));
+    const cv = document.createElement("canvas");
+    cv.width = Math.max(1, Math.round(img.naturalWidth * scale)); cv.height = Math.max(1, Math.round(img.naturalHeight * scale));
+    const ctx = cv.getContext("2d");
+    ctx.drawImage(img, 0, 0, cv.width, cv.height);
+    let data;
+    try { data = ctx.getImageData(0, 0, cv.width, cv.height); } catch (e) { return; }
+    if (gfExtract(data.data, cv.width, cv.height)) ctx.putImageData(data, 0, 0);
+    const g = measureCanvas(cv);
+    if (!g) return;
+    S.mem.garments = S.mem.garments || {};
+    S.mem.garments[c.id] = g;
+    try { localStorage.setItem("wifm-g-" + c.id, JSON.stringify(g)); } catch (e) { /* kept for this visit */ }
+    render();
+  };
+  img.src = c.input.photoUrl;
+}
 function measureSaved(id, g) {
   const im = new Image();
   im.onload = () => {
@@ -1420,7 +1505,7 @@ const A = {
     const id = uid();
     S.mem.files[id] = S.mem.shots.map((s) => s.file);
     const note = (details.split("\n").find((l) => l.trim()) || chart.split("\n")[0] || link || "Item check").slice(0, 60);
-    S.data.checks.unshift({ id, createdAt: Date.now(), status: "pending", note, link, wished: false, input: { link, details, chart, colorHex: F.colorHex || null, colorName: F.colorName || null } });
+    S.data.checks.unshift({ id, createdAt: Date.now(), status: "pending", note, link, wished: false, input: { link, details, chart, colorHex: F.colorHex || null, colorName: F.colorName || null, photoUrl: F.photoUrl || null } });
     S.data.checks = S.data.checks.slice(0, 40);
     S.mem.shots = []; S.ui.form = null; S.ui.homeErr = null;
     go("check", { id });
@@ -1438,7 +1523,7 @@ const A = {
   inboxCheck: (d) => {
     const it = arr(S.inbox).find((x) => x.id === d.id);
     if (!it) return;
-    S.ui.form = { link: it.link || "", details: [it.name, it.store, it.price, it.details].filter(Boolean).join("\n"), chart: it.chart || "", colorHex: it.colorHex ? hex(it.colorHex) : null, colorName: it.colorName || null };
+    S.ui.form = { link: it.link || "", details: [it.name, it.store, it.price, it.details].filter(Boolean).join("\n"), chart: it.chart || "", colorHex: it.colorHex ? hex(it.colorHex) : null, colorName: it.colorName || null, photoUrl: it.photoUrl || null };
     inboxRemove(it.id);
     A.startCheck();
   },
@@ -1447,6 +1532,8 @@ const A = {
     S.mem.garments = S.mem.garments || {};
     S.mem.garments[d.id] = null;
     try { localStorage.removeItem("wifm-g-" + d.id); } catch (e) { /* ignore */ }
+    const c = S.data.checks.find((x) => x.id === d.id);
+    if (c && c.input && c.input.photoUrl) { c.input.photoOff = true; save(); } // don't put the shop photo back on by itself
     render();
   },
   fColor: (d) => { const F = S.ui.form; F.colorHex = d.val; F.colorName = d.name; render(); },

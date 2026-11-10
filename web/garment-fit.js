@@ -68,13 +68,52 @@ function gfExtract(d, W, H) {
   const med = (k) => { const v = border.map((p) => d[A(p) + k]).sort((a, b) => a - b); return v[v.length >> 1]; };
   const ref = [med(0), med(1), med(2)];
   const toRef = (p) => { const a = A(p); const r = d[a] - ref[0], g = d[a + 1] - ref[1], b = d[a + 2] - ref[2]; return r * r + g * g + b * b; };
-  const bg = new Uint8Array(N), q = [];
-  for (const p of border) if (!bg[p] && toRef(p) < 70 * 70) { bg[p] = 1; q.push(p); }
+  // How much the backdrop itself varies (soft gradients, vignettes) sets the tolerances:
+  // a plain white studio backdrop gets a tight one, so pale / cream / white-ish fabric is
+  // NOT eaten by the background fill (real case: a butter-yellow slip dress on white).
+  let varSum = 0;
+  for (const p of border) varSum += toRef(p);
+  const spread = Math.sqrt(varSum / border.length);
+  const T = Math.max(12, Math.min(40, 3 * spread));
+  // Backdrop candidates: close to the backdrop colour. Pale fabric can have near-white
+  // highlights, so the fill runs on an ERODED candidate mask: thin bridges of highlight
+  // pixels through the fabric are cut, and the fill cannot leak into the garment.
+  const cand = new Uint8Array(N);
+  for (let p = 0; p < N; p++) cand[p] = toRef(p) < (2 * T) ** 2 ? 1 : 0;
+  const R = Math.max(2, Math.round(Math.min(W, H) / 220));
+  const morph = (src, keepIf) => { // separable square min (erode) or max (dilate), radius R
+    const tmp = new Uint8Array(N), out = new Uint8Array(N);
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+      let v = keepIf ? 1 : 0;
+      for (let k = -R; k <= R; k++) { const xx = x + k; const s = xx < 0 || xx >= W ? (keepIf ? 1 : 0) : src[y * W + xx]; if (keepIf ? !s : s) { v = keepIf ? 0 : 1; break; } }
+      tmp[y * W + x] = v;
+    }
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+      let v = keepIf ? 1 : 0;
+      for (let k = -R; k <= R; k++) { const yy = y + k; const s = yy < 0 || yy >= H ? (keepIf ? 1 : 0) : tmp[yy * W + x]; if (keepIf ? !s : s) { v = keepIf ? 0 : 1; break; } }
+      out[y * W + x] = v;
+    }
+    return out;
+  };
+  const core = morph(cand, true); // eroded
+  const fill = new Uint8Array(N), q = [];
+  for (const p of border) if (core[p] && !fill[p]) { fill[p] = 1; q.push(p); }
   while (q.length) {
     const p = q.pop(), x = p % W;
-    for (const k of [x > 0 ? p - 1 : -1, x < W - 1 ? p + 1 : -1, p - W, p + W]) {
-      if (k < 0 || k >= N || bg[k]) continue;
-      if (dist2(p, k) < 14 * 14 && toRef(k) < 75 * 75) { bg[k] = 1; q.push(k); }
+    for (const k of [x > 0 ? p - 1 : -1, x < W - 1 ? p + 1 : -1, p - W, p + W]) if (k >= 0 && k < N && core[k] && !fill[k]) { fill[k] = 1; q.push(k); }
+  }
+  const grown = morph(fill, false); // dilate back to the garment's edge
+  const bg = new Uint8Array(N);
+  for (let p = 0; p < N; p++) bg[p] = grown[p] && cand[p] ? 1 : 0;
+  for (const p of border) if (cand[p]) bg[p] = 1;
+  // Narrow gaps the erosion skipped (between an arm and the body): spread into pixels that
+  // are the backdrop colour almost exactly - tight enough not to enter pale fabric.
+  {
+    const tight = Math.max(4, 0.6 * T) ** 2, st = [];
+    for (let p = 0; p < N; p++) if (bg[p]) st.push(p);
+    while (st.length) {
+      const p = st.pop(), x = p % W;
+      for (const k of [x > 0 ? p - 1 : -1, x < W - 1 ? p + 1 : -1, p - W, p + W]) if (k >= 0 && k < N && !bg[k] && toRef(k) < tight) { bg[k] = 1; st.push(k); }
     }
   }
   // 2) Skin: YCbCr skin range, removed only as large connected areas (a print's small peach flowers stay).
@@ -83,7 +122,7 @@ function gfExtract(d, W, H) {
     if (bg[p]) continue;
     const a = A(p), r = d[a], g = d[a + 1], b = d[a + 2];
     const y = 0.299 * r + 0.587 * g + 0.114 * b, cb = 128 - 0.1687 * r - 0.3313 * g + 0.5 * b, cr = 128 + 0.5 * r - 0.4187 * g - 0.0813 * b;
-    if (y > 50 && cr > 135 && cr < 180 && cb > 80 && cb < 130 && r > g && r > b) skin[p] = 1;
+    if (y > 50 && cr > 135 && cr < 180 && cb > 80 && cb < 130 && r - g >= 18 && r > b) skin[p] = 1; // r-g: real skin is clearly redder than cream / butter-yellow fabric
   }
   const bgOnly = bg.slice();
   let fg = 0, skinOut = 0;
@@ -183,6 +222,19 @@ function gfLengthFacts(chart, kind, text, rise, userH, modelH) {
     note: "hemAboveFloorCm: positive = that many cm above the floor; 0 to -3 = touches the floor (fine only with heels); below -3 = drags on the floor and needs hemming.",
   };
 }
+// No length in the chart: a typical length for the named style (midi, maxi...), so the hem is
+// still placed from the floor. Marked as an estimate wherever it is shown.
+function gfTypicalLengthCm(start, text) {
+  const t = String(text || "").toLowerCase();
+  const style = /maxi|floor|długa|довг/.test(t) ? "maxi" : /midi|calf|міді/.test(t) ? "midi" : /mini|міні/.test(t) ? "mini" : /knee|коліна/.test(t) ? "knee" : null;
+  if (!style) return null;
+  const table = {
+    bodice: { mini: 78, knee: 92, midi: 108, maxi: 128 },
+    shoulder: { mini: 85, knee: 100, midi: 118, maxi: 140 },
+    high: { mini: 42, knee: 60, midi: 78, maxi: 98 }, mid: { mini: 40, knee: 58, midi: 75, maxi: 95 }, low: { mini: 38, knee: 56, midi: 72, maxi: 92 },
+  };
+  return table[start] ? table[start][style] : null;
+}
 function gfHemWords(cm) {
   if (cm > 40) return `${Math.round(cm)} cm above the floor (around the knee or above)`;
   if (cm > 15) return `${Math.round(cm)} cm above the floor (mid-calf)`;
@@ -254,4 +306,4 @@ function gfSVG(url, plan, id) {
   return out;
 }
 
-if (typeof module !== "undefined") module.exports = { gfChartLengths, gfStartPoint, gfHemCm, gfLengthFacts, gfHemWords, GF_START, gfExtract, gfMeasure, gfChartLengthCm, gfPlan, gfSVG, gfLerp, GF_TORSO, GF_ROWS, GF_UNITS };
+if (typeof module !== "undefined") module.exports = { gfTypicalLengthCm, gfChartLengths, gfStartPoint, gfHemCm, gfLengthFacts, gfHemWords, GF_START, gfExtract, gfMeasure, gfChartLengthCm, gfPlan, gfSVG, gfLerp, GF_TORSO, GF_ROWS, GF_UNITS };

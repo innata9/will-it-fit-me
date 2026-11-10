@@ -10,6 +10,20 @@ The user picks a product photo and it goes straight onto the avatar. There is **
 the model's skin (face, neck, arms, legs) and leftovers (hair, shoes) automatically,
 keeps skin-coloured prints and nude/peach garments, and `measureCanvas` trims to the garment.
 
+## Rule: reading a product link also brings the product photo
+
+When Claude reads a product link for the app, it also saves the main product photo (front
+view, ideally a flat-lay / plain-background shot) to the app's own file store and puts its
+`/_blob/<id>` url in the inbox item as `photoUrl`. The check keeps it (`input.photoUrl`) and
+`autoGarment()` puts it on the avatar automatically — same cut-out and fitting as a photo the
+user picks. "Use the drawing instead" sets `input.photoOff` so it is not re-applied.
+
+The cut-out must keep pale fabric on white backdrops: the backdrop tolerance adapts to how
+much the backdrop varies, the fill runs on an eroded mask so it cannot leak through near-white
+highlights, and skin needs a clear red cast (cream / butter yellow is not skin).
+When the chart has no length, a typical length for the named style (mini/knee/midi/maxi) is
+used and the app says it is an estimate.
+
 ## Rule: shop photos are fitted to the user's body
 
 A shop photo of a garment must **never** be pasted on the avatar as a plain rectangle.
