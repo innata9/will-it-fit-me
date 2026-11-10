@@ -330,7 +330,7 @@ category is one of dress|top|bottom|outerwear|shoes|boots|bag|accessory|other. s
 const VERDICT_PROMPT = (data) => `You are a personal stylist answering one question before an online purchase: "Will this item fit ME — size, cut and color?"
 You get the user's body profile and color type, facts extracted from the product, and a size match COMPUTED BY CODE from the brand's size chart. Trust the computed numbers; never recompute them. If there is no size chart, estimate from standard EU sizing and lower confidence.
 Judge four axes, each "good", "watch" or "bad", in one or two concrete sentences:
-- size: which size and why not the neighbouring one; use the computed result and the fit history with this brand.
+- size: which size and why not the neighbouring one; use the computed result and the fit history with this brand. FIT HISTORY WINS: if fitHistoryWithThisBrand has a usual size or a size that fitted well, recommend that size (say so: "you usually wear S at this brand") unless this item is marked as running small/large, then move one size and say why. Garment measurements are not body measurements: knits with stretch (elastane, polyamide, open/rib knit) are made 5-15% smaller than the body and that is the intended close fit, not "too small"; woven fabrics without stretch need the garment to be larger than the body.
 - cut: how this cut behaves on this body shape and height. Use computedLength when given: it says where the hem lands ON THE USER, in cm above the floor, for every size (worked out from the length in the chart and real body proportions). Quote it for the recommended size, e.g. \"the hem lies 11 cm on the floor - it will need shortening\"; never say a long dress is fine if it is below -3. Do not invent a length shift from the model's height. If fitHistoryWithThisBrand says a size fitted well or a zone was too long/short, trust that over the size chart. Mention adaptations (belt, hemming, tucking).
 - color: compare the item color with the palette; near the face matters most; if off-palette, say how to wear it anyway.
 - fabric: stretch, structure, sheerness — what it means for fit.
@@ -719,12 +719,24 @@ function gfTypicalLengthCm(start, text) {
   };
   return table[start] ? table[start][style] : null;
 }
-function gfHemWords(cm) {
-  if (cm > 40) return `${Math.round(cm)} cm above the floor (around the knee or above)`;
-  if (cm > 15) return `${Math.round(cm)} cm above the floor (mid-calf)`;
-  if (cm > 3) return `${Math.round(cm)} cm above the floor (ankle)`;
-  if (cm >= -3) return "at the floor";
-  return `${Math.round(-cm)} cm lying on the floor`;
+function gfHemWords(cm, userH) {
+  // Named by where it lands on THIS body (standard proportions of height), not by a fixed cm scale.
+  if (cm < -3) return `${Math.round(-cm)} cm lying on the floor`;
+  if (cm <= 3) return "at the floor";
+  const where = (() => {
+    if (!userH) return null;
+    const r = cm / userH;
+    if (r > 0.6) return "above the waist (cropped)";
+    if (r > 0.55) return "at the waist";
+    if (r > 0.49) return "at the high hip";
+    if (r > 0.44) return "at the hips";
+    if (r > 0.36) return "upper thigh";
+    if (r > 0.3) return "just above the knee";
+    if (r > 0.25) return "at the knee";
+    if (r > 0.14) return "mid-calf";
+    return "at the ankle";
+  })();
+  return `${Math.round(cm)} cm above the floor${where ? ` (${where})` : ""}`;
 }
 
 // Plan the bands: where each measured row of the photo lands on the avatar and how wide.
@@ -820,7 +832,7 @@ function bodyNote(modelH, c) {
   const parts = [m.heightCm ? `${m.heightCm} cm tall` : null, m.shouldersCm ? `${m.shouldersCm} cm shoulders` : null, m.bustCm && m.waistCm && m.hipsCm ? `${m.bustCm}/${m.waistCm}/${m.hipsCm}` : null].filter(Boolean);
   const own = parts.length ? `Drawn to your body: ${parts.join(", ")}.` : "Add your measurements to shape the avatar.";
   const L = c ? lengthInfo(c) : null;
-  const hem = L && L.hemCm !== null ? (L.estimated ? ` No length in the size chart, so a typical ${L.lengthCm} cm is assumed: the hem is about ${gfHemWords(L.hemCm)} on you, barefoot.` : ` Length ${L.lengthCm} cm (size ${L.size}): the hem is ${gfHemWords(L.hemCm)} on you, barefoot.`) : "";
+  const hem = L && L.hemCm !== null ? (L.estimated ? ` No length in the size chart, so a typical ${L.lengthCm} cm is assumed: the hem is about ${gfHemWords(L.hemCm, Number(S.data.m.heightCm))} on you, barefoot.` : ` Length ${L.lengthCm} cm (size ${L.size}): the hem is ${gfHemWords(L.hemCm, Number(S.data.m.heightCm))} on you, barefoot.`) : "";
   return `${own}${hem} Shop photo re-proportioned from a ${modelH ? modelH + " cm" : "typical 176 cm"} model.`;
 }
 
@@ -1110,6 +1122,7 @@ V.check = () => {
   ${c.link ? `<a class="btn" href="${esc(c.link)}" target="_blank" rel="noopener">Open in store</a>` : ""}
   <button class="btn soft" data-a="go" data-v="outfit" data-id="${c.id}">Complete the look</button>
   <button class="btn secondary" data-a="go" data-v="fit" data-id="${c.id}">I bought it — tell us how it fits</button>
+  <button class="link" data-a="recheck" data-id="${c.id}">Check again with my latest sizes</button>
   <button class="link danger" data-a="delCheck" data-id="${c.id}">Delete this check</button>`;
 };
 
@@ -1225,7 +1238,12 @@ V.profile = () => {
   <button class="card" style="border:0;text-align:left;color:var(--ink)" data-a="go" data-v="${d.colorType ? "colorguide" : "selfie"}"><div class="row between"><h2>${d.colorType ? `Color type: ${esc(d.colorType.season)}` : "Color type"}</h2><span style="color:var(--accent);font-weight:800;font-size:14px">${d.colorType ? "Color guide" : "Take selfie"}</span></div>
   ${d.colorType ? `<div class="row" style="gap:6px">${d.colorType.best.slice(0, 8).map((c) => `<span style="flex:1;height:28px;border-radius:6px;background:${c.hex}"></span>`).join("")}</div>` : `<p class="small">A selfie in daylight finds the colors that suit you.</p>`}</button>
   ${d.colorType ? `<button class="link" data-a="go" data-v="colortype">See full palette or retake selfie</button>` : ""}
-  <div class="card"><h2>Fit history</h2>${d.fits.length ? d.fits.map((f) => `<div style="border-top:1px solid var(--line);padding-top:10px"><b>${esc(f.brand)} · ${esc(f.item)} · ${esc(f.size)}</b><p class="small">${Object.entries(f.zones).map(([z, v]) => `${z} ${v === "right" ? "fine" : v}`).join(", ")}. ${f.kept ? "Kept it." : "Returned."} ${esc(f.note)}</p></div>`).join("") : `<p class="small">After you buy something, tell us how it fit — advice for that brand gets sharper.</p>`}</div>
+  <div class="card"><h2>Your size by brand</h2><p class="small">The size you usually wear at a shop. Checks for that brand start from it.</p>
+    <div class="row" style="gap:8px;flex-wrap:wrap"><input class="input" style="flex:2;min-width:140px" placeholder="Brand, e.g. Massimo Dutti" aria-label="Brand" data-bind="usual.brand" value="${esc((S.ui.usual || {}).brand || "")}"><input class="input" style="flex:1;min-width:70px" placeholder="Size" aria-label="Size" data-bind="usual.size" value="${esc((S.ui.usual || {}).size || "")}"></div>
+    <input class="input" placeholder="Note (optional), e.g. sometimes XS" aria-label="Note" data-bind="usual.note" value="${esc((S.ui.usual || {}).note || "")}">
+    ${S.ui.usualErr ? `<p class="small" role="alert" style="color:var(--danger,#B42318)">${esc(S.ui.usualErr)}</p>` : ""}
+    <button class="btn secondary" data-a="usualAdd">Save my size</button></div>
+  <div class="card"><h2>Fit history</h2>${d.fits.length ? d.fits.map((f) => `<div style="border-top:1px solid var(--line);padding-top:10px"><b>${esc(f.brand)} · ${esc(f.item)} · ${esc(f.size)}</b><p class="small">${Object.entries(f.zones).map(([z, v]) => `${z} ${v === "right" ? "fine" : v}`).join(", ")}. ${f.kept ? "Kept it." : "Returned."} ${esc(f.note)}</p><button class="link danger" data-a="fitDel" data-id="${f.id}">Remove</button></div>`).join("") : `<p class="small">After you buy something, tell us how it fit — advice for that brand gets sharper.</p>`}</div>
   ${S.caps.downloads ? `<button class="link" data-a="export">Export my data</button>` : ""}
   ${S.ui.confirm === "all" ? `<div class="confirm"><b>Delete profile and all data?</b><p class="small">Measurements, color type, checks, looks and wardrobe will be removed. This can’t be undone.</p><div class="grid2"><button class="btn secondary" data-a="cancelConfirm">Cancel</button><button class="btn" style="background:var(--bad);color:var(--surface)" data-a="deleteAll">Delete everything</button></div></div>` : `<button class="link danger" data-a="askConfirm" data-val="all">Delete my profile and all data</button>`}
   ${S.ui.saveError ? `<div class="notice bad">${esc(S.ui.saveError)}</div>` : ""}
@@ -1528,6 +1546,15 @@ const A = {
     A.startCheck();
   },
   inboxDel: (d) => inboxRemove(d.id),
+  recheck: (d) => { const c = S.data.checks.find((x) => x.id === d.id); if (!c) return; runCheck(c.id); },
+  usualAdd: () => {
+    const U = S.ui.usual || {};
+    const brand = (U.brand || "").trim(), size = (U.size || "").trim();
+    if (!brand || !size) { S.ui.usualErr = "Add the brand and your size."; render(); return; }
+    S.data.fits.unshift({ id: uid(), brand, item: "Usual size (all items)", size, zones: { bust: "right", waist: "right", hips: "right", length: "right" }, kept: true, note: (U.note || "").trim(), createdAt: Date.now() });
+    S.ui.usual = {}; S.ui.usualErr = null; save(); render();
+  },
+  fitDel: (d) => { S.data.fits = S.data.fits.filter((f) => f.id !== d.id); save(); render(); },
   garRemove: (d) => {
     S.mem.garments = S.mem.garments || {};
     S.mem.garments[d.id] = null;

@@ -138,7 +138,8 @@ test("strappy maxi: length is measured from the bodice, hem lies on the floor fo
   assert.strictEqual(start, "bodice");
   const hem = gf.gfHemCm(125, 158, start);
   assert.ok(hem < -8, `125 cm from the bodice must lie well on the floor for 158 cm, got ${hem}`);
-  assert.match(gf.gfHemWords(hem), /on the floor/);
+  assert.match(gf.gfHemWords(hem, 158), /on the floor/);
+  assert.match(gf.gfHemWords(73, 158), /hips/, "a 56 cm sweater on 158 cm ends at the hips, not the knee");
   assert.ok(gf.gfHemCm(125, 168, start) > hem + 6, "on the 168 cm model it sits ~7 cm higher");
 });
 

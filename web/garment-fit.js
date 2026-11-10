@@ -235,12 +235,24 @@ function gfTypicalLengthCm(start, text) {
   };
   return table[start] ? table[start][style] : null;
 }
-function gfHemWords(cm) {
-  if (cm > 40) return `${Math.round(cm)} cm above the floor (around the knee or above)`;
-  if (cm > 15) return `${Math.round(cm)} cm above the floor (mid-calf)`;
-  if (cm > 3) return `${Math.round(cm)} cm above the floor (ankle)`;
-  if (cm >= -3) return "at the floor";
-  return `${Math.round(-cm)} cm lying on the floor`;
+function gfHemWords(cm, userH) {
+  // Named by where it lands on THIS body (standard proportions of height), not by a fixed cm scale.
+  if (cm < -3) return `${Math.round(-cm)} cm lying on the floor`;
+  if (cm <= 3) return "at the floor";
+  const where = (() => {
+    if (!userH) return null;
+    const r = cm / userH;
+    if (r > 0.6) return "above the waist (cropped)";
+    if (r > 0.55) return "at the waist";
+    if (r > 0.49) return "at the high hip";
+    if (r > 0.44) return "at the hips";
+    if (r > 0.36) return "upper thigh";
+    if (r > 0.3) return "just above the knee";
+    if (r > 0.25) return "at the knee";
+    if (r > 0.14) return "mid-calf";
+    return "at the ankle";
+  })();
+  return `${Math.round(cm)} cm above the floor${where ? ` (${where})` : ""}`;
 }
 
 // Plan the bands: where each measured row of the photo lands on the avatar and how wide.
