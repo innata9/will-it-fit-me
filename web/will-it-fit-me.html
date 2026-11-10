@@ -100,6 +100,10 @@ label.lbl { font-size: 14px; font-weight: 800; }
 
 .list-row { display: flex; align-items: center; gap: 12px; background: var(--surface); border-radius: 14px; padding: 10px 12px; border: 0; width: 100%; text-align: left; color: var(--ink); }
 .thumb { width: 44px; height: 54px; border-radius: 8px; flex-shrink: 0; object-fit: cover; }
+.pager { display: flex; justify-content: center; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
+.pagebtn { min-width: 40px; height: 40px; padding: 0 10px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); font: inherit; font-weight: 600; cursor: pointer; }
+.pagebtn.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+.pagebtn:disabled { opacity: .35; cursor: default; }
 .thumb.photo { object-fit: contain; background: var(--stage); padding: 2px; box-sizing: border-box; }
 .axis { display: flex; gap: 12px; padding: 14px 0; border-top: 1px solid var(--line); }
 .axis:first-child { border-top: 0; }
@@ -1110,9 +1114,29 @@ V.home = () => {
   </div>
   ${pct < 100 ? `<div class="card accent" style="flex-direction:row;align-items:center"><div class="grow"><b style="font-size:14px">Your profile is ${pct}% complete</b><p class="tiny">More measurements = more precise verdicts (calf for boots, inseam for trousers).</p></div><button class="link" data-a="tab" data-v="profile">Complete</button></div>` : ""}
   ${!S.data.colorType ? `<div class="card accent" style="flex-direction:row;align-items:center"><div class="grow"><b style="font-size:14px">Find your color type</b><p class="tiny">One selfie in daylight. Color advice gets personal.</p></div><button class="link" data-a="go" data-v="selfie">Start</button></div>` : ""}
-  <h2>Recent checks</h2>
-  ${S.data.checks.length ? `<div class="stack">${S.data.checks.slice(0, 12).map(checkRow).join("")}</div>` : `<p class="small">Your checks will appear here.</p>`}`;
+  <h2 id="recentHead">Recent checks${S.data.checks.length > CHECKS_PER_PAGE ? ` <span class="tiny" style="font-weight:500">(${S.data.checks.length})</span>` : ""}</h2>
+  ${S.data.checks.length ? recentPage() : `<p class="small">Your checks will appear here.</p>`}`;
 };
+
+// Recent checks: 20 per page, newest first, with page controls when there are more.
+const CHECKS_PER_PAGE = 20;
+function recentPage() {
+  const total = S.data.checks.length, pages = Math.max(1, Math.ceil(total / CHECKS_PER_PAGE));
+  const page = Math.min(Math.max(1, S.ui.recentPage || 1), pages);
+  S.ui.recentPage = page;
+  const start = (page - 1) * CHECKS_PER_PAGE;
+  const rows = S.data.checks.slice(start, start + CHECKS_PER_PAGE).map(checkRow).join("");
+  if (pages === 1) return `<div class="stack">${rows}</div>`;
+  const btn = (p, label, aria, cur) => `<button class="pagebtn${cur ? " on" : ""}" data-a="recentGo" data-v="${p}" aria-label="${aria}"${cur ? ' aria-current="page"' : ""}${p < 1 || p > pages ? " disabled" : ""}>${label}</button>`;
+  const nums = [];
+  for (let p = 1; p <= pages; p++) {
+    if (p === 1 || p === pages || Math.abs(p - page) <= 1) nums.push(btn(p, p, `Page ${p}`, p === page));
+    else if (nums[nums.length - 1] !== "…") nums.push("…");
+  }
+  return `<div class="stack">${rows}</div>
+  <nav class="pager" aria-label="Recent checks pages">${btn(page - 1, "&lsaquo;", "Previous page")}${nums.map((n) => (n === "…" ? `<span class="tiny" aria-hidden="true">&hellip;</span>` : n)).join("")}${btn(page + 1, "&rsaquo;", "Next page")}</nav>
+  <p class="tiny" style="text-align:center">${start + 1}&ndash;${Math.min(start + CHECKS_PER_PAGE, total)} of ${total}</p>`;
+}
 
 V.check = () => {
   const c = S.data.checks.find((x) => x.id === S.params.id);
@@ -1579,6 +1603,7 @@ const A = {
     A.startCheck();
   },
   inboxDel: (d) => inboxRemove(d.id),
+  recentGo: (d) => { S.ui.recentPage = Number(d.v) || 1; render(); const el = document.getElementById("recentHead"); if (el) el.scrollIntoView({ block: "start" }); },
   recheck: (d) => { const c = S.data.checks.find((x) => x.id === d.id); if (!c) return; runCheck(c.id); },
   usualAdd: () => {
     const U = S.ui.usual || {};

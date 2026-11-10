@@ -246,3 +246,8 @@ test("check lists show the item's own photo; shop photos for older checks come f
   assert.ok(/it\.photoUrl \? `<img class="thumb photo"/.test(html), "inbox rows show the shop photo");
   assert.ok(/"\/photos"\)\.onSnapshot/.test(html) && /function photoUrlFor/.test(html), "photos added later are read from data/users/<id>/photos");
 });
+
+test("recent checks are paginated, 20 per page", () => {
+  assert.ok(/const CHECKS_PER_PAGE = 20;/.test(html));
+  assert.ok(/recentPage\(\)/.test(html) && /data-a="recentGo"/.test(html));
+});
