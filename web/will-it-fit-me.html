@@ -246,6 +246,23 @@ function colorOut(c) {
   const ax = arr(r.verdict && r.verdict.axes).find((a) => a.axis === "color");
   return fit === "avoid" || fit === "unknown" || !!(ax && ax.rating === "bad");
 }
+// Rule: one-size stretchy knits (beanie, knit hat, scarf, snood) need no size chart.
+// With an average head (54-59 cm) or a scarf, size is "good"; if nothing else is a
+// problem the check is "Buy it", never "Conditional" just because a chart is missing.
+const KNIT_ONE_SIZE = /\b(beanie|knit(ted)? hat|bonnet|toque|scarf|snood|balaclava)\b/i;
+function oneSizeKnitRule(r, m, text) {
+  if (!r || !r.item || !r.verdict) return;
+  const it = r.item, v = r.verdict, words = `${it.name} ${text || ""}`;
+  if (!KNIT_ONE_SIZE.test(it.name) || !/one[\s-]?size|\bOS\b|\bonesize\b/i.test(`${v.recommendedSize || ""} ${words}`)) return;
+  const scarf = /scarf|snood/i.test(it.name), head = Number(m && m.headCm);
+  if (!scarf && !(head >= 54 && head <= 59)) return;
+  v.axes.forEach((a) => { if ((a.axis === "size" || a.axis === "fabric") && a.rating === "watch") a.rating = "good"; });
+  if (v.verdict === "conditional" && !v.axes.some((a) => a.rating === "bad")) {
+    v.verdict = "buy";
+    if (v.confidence === "medium" || v.confidence === "low") v.confidence = "high";
+    v.confidenceReason = `One size in a stretchy knit${scarf ? "" : ` fits an average head like yours (${head} cm)`}, so no size chart is needed.`;
+  }
+}
 function effVerdict(c) {
   const v = c && c.result && c.result.verdict; if (!v) return null;
   return (v.verdict === "buy" || v.verdict === "conditional") && colorOut(c) ? "risky" : v.verdict;
@@ -356,7 +373,7 @@ Judge four axes, each "good", "watch" or "bad", in one or two concrete sentences
 - cut: how this cut behaves on this body shape and height. Use computedLength when given: it says where the hem lands ON THE USER, in cm above the floor, for every size (worked out from the length in the chart and real body proportions). Quote it for the recommended size, e.g. \"the hem lies 11 cm on the floor - it will need shortening\"; never say a long dress is fine if it is below -3. Do not invent a length shift from the model's height. If fitHistoryWithThisBrand says a size fitted well or a zone was too long/short, trust that over the size chart. Mention adaptations (belt, hemming, tucking).
 - color: compare the item color with the palette; near the face matters most; if off-palette, say how to wear it anyway.
 - fabric: stretch, structure, sheerness — what it means for fit.
-Overall verdict: "buy" (all good), "conditional" (works with one condition), "risky" (two or more concerns or key data missing, e.g. boot shaft unknown), "no" (will not work). If the item's main colour is outside the person's colour type (not in their best colours or neutrals, or in their avoid list), the verdict must be at least "risky" and the color axis rating "bad", even when size and cut are fine.
+Overall verdict: "buy" (all good), "conditional" (works with one condition), "risky" (two or more concerns or key data missing, e.g. boot shaft unknown), "no" (will not work). If the item's main colour is outside the person's colour type (not in their best colours or neutrals, or in their avoid list), the verdict must be at least "risky" and the color axis rating "bad", even when size and cut are fine. One-size stretchy knits (beanies, knit hats, scarves, snoods) do not need a size chart: if the person's head is 54-59 cm (or the item is a scarf), rate size "good" and give "buy" when colour and cut are good; a missing chart alone is never a reason for "conditional" on these.
 ${RULES}
 DATA:
 ${JSON.stringify(data)}
@@ -455,6 +472,7 @@ async function runCheck(id) {
         risks: String(verdict.risks || ""), howTo: String(verdict.howTo || ""), missing: arr(verdict.missing).map(String),
       },
     };
+    oneSizeKnitRule(c.result, m, text);
     c.status = "done"; c.stage = null;
   } catch (e) { c.status = "error"; c.error = aiError(e); }
   save();

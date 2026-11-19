@@ -67,3 +67,12 @@ Chips above Recent checks (All · Buy it · Conditional · Risky · Won't fit, e
 with a count) filter the list by the verdict the user sees, using
 `effVerdict(c)` so the colour rule is included. Picking a chip returns to page 1;
 pagination (20 per page) works on the filtered list.
+
+## Rule: one-size stretchy knits don't need a size chart
+
+Beanies, knit hats, scarves and snoods sold in one size are not marked
+"Conditional" just because the shop gives no measurements. `oneSizeKnitRule`
+runs after the AI verdict: with a head of 54–59 cm (or for any scarf), the size
+and fabric axes become "good", and a "conditional" with no "bad" axis becomes
+"buy". Structured hats (pillbox, beret, cap) are not covered: they still need a
+head size. The AI prompt states the same rule.
