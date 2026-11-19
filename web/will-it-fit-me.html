@@ -234,6 +234,18 @@ function paletteFit(h, ct) {
   if (neu < 150) return "neutral";
   return avoid < 200 ? "avoid" : "unknown";
 }
+// Rule: a colour outside the person's colour type makes the check at least "Risky".
+// It never lifts a "Won't fit" and only applies once a colour type is saved.
+function colorOut(c) {
+  const r = c && c.result; if (!r || !r.item || !S.data.colorType) return false;
+  const fit = paletteFit(r.item.colorHex, S.data.colorType);
+  const ax = arr(r.verdict && r.verdict.axes).find((a) => a.axis === "color");
+  return fit === "avoid" || fit === "unknown" || !!(ax && ax.rating === "bad");
+}
+function effVerdict(c) {
+  const v = c && c.result && c.result.verdict; if (!v) return null;
+  return (v.verdict === "buy" || v.verdict === "conditional") && colorOut(c) ? "risky" : v.verdict;
+}
 
 /* Deterministic size match: smallest size where no measurement is over its max (stretch gives tolerance). */
 function matchSize(chart, m, stretch) {
@@ -340,7 +352,7 @@ Judge four axes, each "good", "watch" or "bad", in one or two concrete sentences
 - cut: how this cut behaves on this body shape and height. Use computedLength when given: it says where the hem lands ON THE USER, in cm above the floor, for every size (worked out from the length in the chart and real body proportions). Quote it for the recommended size, e.g. \"the hem lies 11 cm on the floor - it will need shortening\"; never say a long dress is fine if it is below -3. Do not invent a length shift from the model's height. If fitHistoryWithThisBrand says a size fitted well or a zone was too long/short, trust that over the size chart. Mention adaptations (belt, hemming, tucking).
 - color: compare the item color with the palette; near the face matters most; if off-palette, say how to wear it anyway.
 - fabric: stretch, structure, sheerness — what it means for fit.
-Overall verdict: "buy" (all good), "conditional" (works with one condition), "risky" (two or more concerns or key data missing, e.g. boot shaft unknown), "no" (will not work).
+Overall verdict: "buy" (all good), "conditional" (works with one condition), "risky" (two or more concerns or key data missing, e.g. boot shaft unknown), "no" (will not work). If the item's main colour is outside the person's colour type (not in their best colours or neutrals, or in their avoid list), the verdict must be at least "risky" and the color axis rating "bad", even when size and cut are fine.
 ${RULES}
 DATA:
 ${JSON.stringify(data)}
@@ -1092,7 +1104,7 @@ const checkRow = (c) => {
   const it = c.result && c.result.item, v = c.result && c.result.verdict;
   const title = it ? it.name : c.note ? c.note.slice(0, 40) : "Screenshot check";
   const meta = it ? [it.brand || it.store, v && v.recommendedSize ? `size ${v.recommendedSize}` : null].filter(Boolean).join(" · ") : c.status === "pending" ? "Checking…" : c.error || "";
-  const badge = c.status === "pending" ? `<span class="pill acc">Checking</span>` : v ? `<span class="pill ${VERDICT[v.verdict][1]}">${VERDICT[v.verdict][0]}</span>` : `<span class="pill bad">Failed</span>`;
+  const badge = c.status === "pending" ? `<span class="pill acc">Checking</span>` : v ? `<span class="pill ${VERDICT[effVerdict(c)][1]}">${VERDICT[effVerdict(c)][0]}</span>` : `<span class="pill bad">Failed</span>`;
   return `<button class="list-row" data-a="openCheck" data-id="${c.id}">${checkThumb(c)}<span class="grow"><b style="display:block;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(title)}</b><span class="tiny" style="display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(meta)}</span></span>${badge}</button>`;
 };
 
@@ -1160,12 +1172,13 @@ V.check = () => {
   if (c.status === "pending") return `${topbar("Item check")}<div class="stack" style="align-items:center;padding:56px 0;text-align:center"><div class="spinner" role="status" aria-label="Checking"></div><h2>${esc(c.stage || "Checking this item…")}</h2><p class="small">Reading the size chart, fabric and photos. Usually 30–90 seconds. Keep this page open.</p></div>`;
   if (c.status === "error" || !c.result) return `${topbar("Item check")}<div class="notice bad" role="alert">${esc(c.error || "Something went wrong.")}</div>${S.mem.files[c.id] ? `<button class="btn" data-a="retry" data-id="${c.id}">Try again</button>` : ""}<button class="btn secondary" data-a="tab" data-v="home">Back to home</button>`;
   const { item, verdict: v, sizeMatch } = c.result;
-  const vs = VERDICT[v.verdict], fit = paletteFit(item.colorHex, S.data.colorType);
+  const vs = VERDICT[effVerdict(c)], fit = paletteFit(item.colorHex, S.data.colorType), colorRisk = effVerdict(c) !== v.verdict;
   const fitTxt = { in: "in your palette", neutral: "a neutral for you", avoid: "keep away from your face", unknown: "not in your palette" }[fit];
   return `${topbar("Item check", heart)}
   <div class="row" style="gap:14px;align-items:center"><span style="width:84px;height:108px;border-radius:12px;background:${item.colorHex};flex-shrink:0"></span>
     <div class="stack grow" style="gap:4px"><h1 style="font-size:20px">${esc(item.name)}</h1><p class="small">${esc([item.brand, item.store].filter(Boolean).join(" · "))}</p>${item.price ? `<b>${esc(item.price)}${item.oldPrice ? ` <s class="muted" style="font-weight:400">${esc(item.oldPrice)}</s>` : ""}</b>` : ""}</div></div>
-  <div class="verdict-banner" style="background:var(--${vs[1]}-bg)"><h2 style="color:var(--${vs[1]})">${esc(v.headline || vs[0])}</h2><p class="body2">${esc(v.sizeReason)}</p>
+  <div class="verdict-banner" style="background:var(--${vs[1]}-bg)"><span class="pill ${vs[1]}" style="align-self:flex-start">${vs[0]}</span><h2 style="color:var(--${vs[1]})">${esc(v.headline || vs[0])}</h2>
+    ${colorRisk ? `<p class="small body2"><b>Risky because of colour:</b> ${esc(item.colorName || "this colour")} is outside your ${esc((S.data.colorType && S.data.colorType.season) || "colour type")} palette. The size and cut can still work.</p>` : ""}<p class="body2">${esc(v.sizeReason)}</p>
     ${sizeMatch && sizeMatch.borderline ? `<p class="small body2">Size ${esc(sizeMatch.borderline.size)} is close: only the ${esc(sizeMatch.borderline.measure)} is ${sizeMatch.borderline.overCm} cm over.</p>` : ""}
     <p class="small body2"><b>Confidence: ${esc(v.confidence)}</b> — ${esc(v.confidenceReason)}</p></div>
   <div class="card tight">${v.axes.map((a) => `<div class="axis"><span class="tag"><span class="pill ${RATING[a.rating][1]}">${RATING[a.rating][0]}</span></span><div class="grow stack" style="gap:4px"><span class="axis-title">${AXIS[a.axis]}</span><p class="small">${esc(a.text)}</p>${a.axis === "color" ? `<div class="row" style="gap:8px"><span style="width:20px;height:20px;border-radius:5px;background:${item.colorHex}"></span><span class="tiny">${esc(item.colorName || "Item color")} · ${fitTxt}</span></div>` : ""}</div></div>`).join("")}</div>

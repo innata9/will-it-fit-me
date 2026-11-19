@@ -52,3 +52,11 @@ node --test web/test/
 ```
 
 The tests fail if a manual selection step comes back, if the cut-out stops removing background/skin, if the HTML stops using the fitter, drifts from `garment-fit.js`, or if the garment stops following the body.
+
+## Rule: a colour outside the colour type makes the check Risky
+
+When a colour type is saved and an item's main colour falls outside it
+(`paletteFit` returns `avoid` or `unknown`, or the AI rates the colour axis
+`bad`), the check shows **Risky** even if size and cut are fine. This is applied
+at render time by `effVerdict(c)`, so old checks follow the rule too. It never
+softens a "Won't fit". The item page explains that the risk comes from colour.
