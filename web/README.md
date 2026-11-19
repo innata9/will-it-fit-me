@@ -76,3 +76,10 @@ runs after the AI verdict: with a head of 54–59 cm (or for any scarf), the siz
 and fabric axes become "good", and a "conditional" with no "bad" axis becomes
 "buy". Structured hats (pillbox, beret, cap) are not covered: they still need a
 head size. The AI prompt states the same rule.
+
+## Rule: a failed check can always be retried
+
+If the AI's verdict comes back incomplete, `runCheck` asks again automatically
+(up to 3 tries). If it still fails, the error page shows **Try again** for every
+check that has saved input, including items read from a link (not only checks
+made from uploaded screenshots).

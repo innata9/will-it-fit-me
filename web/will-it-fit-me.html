@@ -456,7 +456,12 @@ async function runCheck(id) {
     const ltxt = `${item.name || ""} ${item.lengthNote || ""} ${text}`;
     const lengthFacts = gfLengthFacts(inp.chart || text, lkind, ltxt, /high[- ]?(rise|waist)|висок/i.test(ltxt) ? "high" : /low[- ]?rise|низьк/i.test(ltxt) ? "low" : "mid", Number(m.heightCm), Number(item.modelHeightCm) || null);
     const history = S.data.fits.filter((f) => item.brand && f.brand.toLowerCase() === String(item.brand).toLowerCase()).map((f) => ({ item: f.item, size: f.size, zones: f.zones, kept: f.kept, note: f.note }));
-    const verdict = await sample.json(VERDICT_PROMPT({ profile: profileForAI(), item, computedSizeMatch: sizeMatch && { recommended: sizeMatch.recommended, borderline: sizeMatch.borderline, rows: sizeMatch.rows }, computedLength: lengthFacts, fitHistoryWithThisBrand: history }), files.length && S.caps.images ? { images: files.slice(0, 1), modelTier: "default" } : { modelTier: "default" });
+    // An incomplete AI answer is retried automatically (up to 3 tries) before showing an error.
+    const askVerdict = () => sample.json(VERDICT_PROMPT({ profile: profileForAI(), item, computedSizeMatch: sizeMatch && { recommended: sizeMatch.recommended, borderline: sizeMatch.borderline, rows: sizeMatch.rows }, computedLength: lengthFacts, fitHistoryWithThisBrand: history }), files.length && S.caps.images ? { images: files.slice(0, 1), modelTier: "default" } : { modelTier: "default" });
+    let verdict = null;
+    for (let t = 0; t < 3 && !(verdict && verdict.verdict); t++) {
+      try { verdict = await askVerdict(); } catch (e) { if (!(e && e.code === "invalid_json") || t === 2) throw e; }
+    }
     if (!verdict || !verdict.verdict) throw { code: "invalid_json" };
     c.result = {
       item: {
@@ -1207,7 +1212,7 @@ V.check = () => {
   if (c.status === "done" && photoUrlFor(c)) setTimeout(() => autoGarment(c), 0);
   const heart = `<button class="iconbtn" data-a="wish" data-id="${c.id}" aria-label="${c.wished ? "Remove from wishlist" : "Add to wishlist"}" style="color:${c.wished ? "var(--accent)" : "var(--ink)"}">${icon("heart", 20, c.wished)}</button>`;
   if (c.status === "pending") return `${topbar("Item check")}<div class="stack" style="align-items:center;padding:56px 0;text-align:center"><div class="spinner" role="status" aria-label="Checking"></div><h2>${esc(c.stage || "Checking this item…")}</h2><p class="small">Reading the size chart, fabric and photos. Usually 30–90 seconds. Keep this page open.</p></div>`;
-  if (c.status === "error" || !c.result) return `${topbar("Item check")}<div class="notice bad" role="alert">${esc(c.error || "Something went wrong.")}</div>${S.mem.files[c.id] ? `<button class="btn" data-a="retry" data-id="${c.id}">Try again</button>` : ""}<button class="btn secondary" data-a="tab" data-v="home">Back to home</button>`;
+  if (c.status === "error" || !c.result) return `${topbar("Item check")}<div class="notice bad" role="alert">${esc(c.error || "Something went wrong.")}</div>${S.mem.files[c.id] || (c.input && (c.input.details || c.input.chart)) ? `<button class="btn" data-a="retry" data-id="${c.id}">Try again</button>` : ""}<button class="btn secondary" data-a="tab" data-v="home">Back to home</button>`;
   const { item, verdict: v, sizeMatch } = c.result;
   const vs = VERDICT[effVerdict(c)], fit = paletteFit(item.colorHex, S.data.colorType), colorRisk = effVerdict(c) !== v.verdict;
   const fitTxt = { in: "in your palette", neutral: "a neutral for you", avoid: "keep away from your face", unknown: "not in your palette" }[fit];
