@@ -60,3 +60,10 @@ When a colour type is saved and an item's main colour falls outside it
 `bad`), the check shows **Risky** even if size and cut are fine. This is applied
 at render time by `effVerdict(c)`, so old checks follow the rule too. It never
 softens a "Won't fit". The item page explains that the risk comes from colour.
+
+## Rule: Recent checks can be filtered by verdict
+
+Chips above Recent checks (All · Buy it · Conditional · Risky · Won't fit, each
+with a count) filter the list by the verdict the user sees, using
+`effVerdict(c)` so the colour rule is included. Picking a chip returns to page 1;
+pagination (20 per page) works on the filtered list.

@@ -104,6 +104,10 @@ label.lbl { font-size: 14px; font-weight: 800; }
 .pagebtn { min-width: 40px; height: 40px; padding: 0 10px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); font: inherit; font-weight: 600; cursor: pointer; }
 .pagebtn.on { background: var(--accent); border-color: var(--accent); color: #fff; }
 .pagebtn:disabled { opacity: .35; cursor: default; }
+.filters { display: flex; gap: 6px; flex-wrap: wrap; }
+.fchip { height: 36px; padding: 0 12px; border-radius: 18px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
+.fchip.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+.fchip:disabled { opacity: .4; cursor: default; }
 .thumb.photo { object-fit: contain; background: var(--stage); padding: 2px; box-sizing: border-box; }
 .axis { display: flex; gap: 12px; padding: 14px 0; border-top: 1px solid var(--line); }
 .axis:first-child { border-top: 0; }
@@ -1141,17 +1145,32 @@ V.home = () => {
   ${pct < 100 ? `<div class="card accent" style="flex-direction:row;align-items:center"><div class="grow"><b style="font-size:14px">Your profile is ${pct}% complete</b><p class="tiny">More measurements = more precise verdicts (calf for boots, inseam for trousers).</p></div><button class="link" data-a="tab" data-v="profile">Complete</button></div>` : ""}
   ${!S.data.colorType ? `<div class="card accent" style="flex-direction:row;align-items:center"><div class="grow"><b style="font-size:14px">Find your color type</b><p class="tiny">One selfie in daylight. Color advice gets personal.</p></div><button class="link" data-a="go" data-v="selfie">Start</button></div>` : ""}
   <h2 id="recentHead">Recent checks${S.data.checks.length > CHECKS_PER_PAGE ? ` <span class="tiny" style="font-weight:500">(${S.data.checks.length})</span>` : ""}</h2>
-  ${S.data.checks.length ? recentPage() : `<p class="small">Your checks will appear here.</p>`}`;
+  ${S.data.checks.length ? recentFilters() + recentPage() : `<p class="small">Your checks will appear here.</p>`}`;
 };
+
+// Recent checks can be filtered by verdict (the shown verdict, colour rule included).
+const RECENT_FILTERS = [["all", "All"], ["buy", "Buy it"], ["conditional", "Conditional"], ["risky", "Risky"], ["no", "Won’t fit"]];
+const recentKind = (c) => (c.status === "pending" ? "pending" : effVerdict(c) || "failed");
+function recentList() {
+  const f = S.ui.recentFilter || "all";
+  return f === "all" ? S.data.checks : S.data.checks.filter((c) => recentKind(c) === f);
+}
+function recentFilters() {
+  const f = S.ui.recentFilter || "all";
+  const count = (k) => (k === "all" ? S.data.checks.length : S.data.checks.filter((c) => recentKind(c) === k).length);
+  return `<div class="filters" role="group" aria-label="Filter checks by verdict">${RECENT_FILTERS.map(([k, label]) => { const n = count(k); return `<button class="fchip${f === k ? " on" : ""}" data-a="recentFilter" data-v="${k}" aria-pressed="${f === k}"${!n && f !== k ? " disabled" : ""}>${label} ${n}</button>`; }).join("")}</div>`;
+}
 
 // Recent checks: 20 per page, newest first, with page controls when there are more.
 const CHECKS_PER_PAGE = 20;
 function recentPage() {
-  const total = S.data.checks.length, pages = Math.max(1, Math.ceil(total / CHECKS_PER_PAGE));
+  const list = recentList();
+  if (!list.length) return `<p class="small">No checks with this verdict.</p>`;
+  const total = list.length, pages = Math.max(1, Math.ceil(total / CHECKS_PER_PAGE));
   const page = Math.min(Math.max(1, S.ui.recentPage || 1), pages);
   S.ui.recentPage = page;
   const start = (page - 1) * CHECKS_PER_PAGE;
-  const rows = S.data.checks.slice(start, start + CHECKS_PER_PAGE).map(checkRow).join("");
+  const rows = list.slice(start, start + CHECKS_PER_PAGE).map(checkRow).join("");
   if (pages === 1) return `<div class="stack">${rows}</div>`;
   const btn = (p, label, aria, cur) => `<button class="pagebtn${cur ? " on" : ""}" data-a="recentGo" data-v="${p}" aria-label="${aria}"${cur ? ' aria-current="page"' : ""}${p < 1 || p > pages ? " disabled" : ""}>${label}</button>`;
   const nums = [];
@@ -1630,6 +1649,7 @@ const A = {
     A.startCheck();
   },
   inboxDel: (d) => inboxRemove(d.id),
+  recentFilter: (d) => { S.ui.recentFilter = d.v || "all"; S.ui.recentPage = 1; render(); },
   recentGo: (d) => { S.ui.recentPage = Number(d.v) || 1; render(); const el = document.getElementById("recentHead"); if (el) el.scrollIntoView({ block: "start" }); },
   recheck: (d) => { const c = S.data.checks.find((x) => x.id === d.id); if (!c) return; runCheck(c.id); },
   usualAdd: () => {
